@@ -10,8 +10,9 @@ import java.util.concurrent.ScheduledExecutorService;
 
 public class ObjectLogBuffer {
     private final LogBuffer logBuffer;
+    /** */
     private ObjectLogSerializer serializer;
-    private ScheduledExecutorService cachedExecutor;
+
 
     public ObjectLogBuffer(LogBuffer logBuffer, ObjectLogSerializer serializer) {
         this.logBuffer = logBuffer;

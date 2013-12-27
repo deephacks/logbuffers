@@ -10,19 +10,32 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class ObjectLogBufferTailer<T> {
+/**
+ * The actual process that watch a object log buffer for new logs of a specific type.
+ *
+ * If scheduled forwarding is used, a single-threaded executor of the underlying log buffer
+ * will be reused for every tail instance.
+ *
+ * @param <T> type of logs to process.
+ */
+public class ObjectLogBufferTail<T> {
     private ObjectLogBuffer logBuffer;
     private Index readIndex;
     private Tail<T> tail;
     private Class<T> type;
 
-    public ObjectLogBufferTailer(ObjectLogBuffer logBuffer, Tail<T> tail) throws IOException {
+    public ObjectLogBufferTail(ObjectLogBuffer logBuffer, Tail<T> tail) throws IOException {
         this.logBuffer = logBuffer;
         this.readIndex = new Index(logBuffer.getBasePath() + "/" + tail.getName());
         this.tail = tail;
         this.type = (Class<T>) getParameterizedType(tail.getClass(), Tail.class).get(0);
     }
 
+    /**
+     * Push the index forward if logs are processed successfully by the tail.
+     *
+     * @throws IOException
+     */
     public void forward() throws IOException {
         long currentWriteIndex = logBuffer.getIndex();
         long currentReadIndex = readIndex.getIndex();
@@ -32,14 +45,20 @@ public class ObjectLogBufferTailer<T> {
         readIndex.writeIndex(currentWriteIndex);
     }
 
+    /**
+     * Forwards the log processing periodically by notifying the tail each round.
+     *
+     * @param delay the delay between the termination of one execution and the commencement of the next.
+     * @param unit time unit of the delay parameter.
+     */
     public void forwardWithFixedDelay(int delay, TimeUnit unit) {
         this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this), 0, delay, unit);
     }
 
     private static final class TailSchedule implements Runnable {
-        private ObjectLogBufferTailer tailer;
+        private ObjectLogBufferTail tailer;
 
-        public TailSchedule(ObjectLogBufferTailer tailer) {
+        public TailSchedule(ObjectLogBufferTail tailer) {
             this.tailer = tailer;
         }
 
@@ -47,8 +66,8 @@ public class ObjectLogBufferTailer<T> {
         public void run() {
             try {
                 tailer.forward();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            } catch (Exception e) {
+                // ignore for now
             }
         }
     }

@@ -4,13 +4,13 @@ import net.openhft.chronicle.SingleMappedFileCache;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
+/**
+ * Keeps track of the index for a specific reader or writer.
+ */
 class Index {
     private SingleMappedFileCache fileCache;
     private ByteBuffer buffer;
-    private Mark mark;
 
     Index(String filePath) throws IOException {
         fileCache = new SingleMappedFileCache(filePath, 16);
@@ -22,8 +22,7 @@ class Index {
     }
 
     synchronized long getIndex() throws IOException {
-        long value = buffer.getLong(0);
-        return value;
+        return buffer.getLong(0);
     }
 
     synchronized void writeTimestamp(long timestamp) {
@@ -31,64 +30,17 @@ class Index {
     }
 
     synchronized long getTimestamp() throws IOException {
-        long value = buffer.getLong(8);
-        return value;
+        return buffer.getLong(8);
     }
 
     void close() throws IOException {
+        fileCache.close();
     }
 
-    Mark mark() throws IOException {
-        mark = new Mark(getIndex(), getTimestamp());
-        return mark;
-    }
-
-    Mark getMark() throws IOException {
-        return mark;
-    }
-
-    void rewind() throws IOException {
-        writeIndex(mark.getIndex());
-        writeTimestamp(mark.getTimestamp());
-    }
-
-    boolean isReadable(long writeIndex) throws IOException {
-        long index = getIndex();
-        return index < writeIndex;
-    }
-
-    public long getAndIncrement() throws IOException {
+    long getAndIncrement() throws IOException {
         long index = getIndex();
         writeIndex(index + 1);
         writeTimestamp(System.currentTimeMillis());
         return index;
-    }
-
-    static class Mark {
-        private static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-        long timestamp;
-        long index;
-
-        private Mark(long index, long timestamp) {
-            this.timestamp = timestamp;
-            this.index = index;
-        }
-
-        private long getTimestamp() {
-            return timestamp;
-        }
-
-        private long getIndex() {
-            return index;
-        }
-
-        @Override
-        public String toString() {
-            return "Mark{" +
-                    "index=" + index +
-                    ", timestamp=" + timestamp +
-                    ", time=" + FORMAT.format(new Date(timestamp)) +
-                    '}';
-        }
     }
 }

@@ -3,8 +3,13 @@ package org.deephacks.logbuffers;
 import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.ExcerptTailer;
 
+/**
+ * A raw log message. Every log message have a type.
+ *
+ * If no type is specified, the log is treated as a raw binary log.
+ */
 public class Log {
-    public static long DEFAULT_TYPE = Long.MIN_VALUE;
+    public static long DEFAULT_TYPE = 1;
     private long type = DEFAULT_TYPE;
     private final byte[] content;
     private Object length;
