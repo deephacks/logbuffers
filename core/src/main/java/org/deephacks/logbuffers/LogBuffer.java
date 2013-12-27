@@ -170,7 +170,7 @@ public class LogBuffer {
         private Optional<String> basePath = Optional.absent();
 
         public Builder() {
-            config.indexFileExcerpts(256);
+            config.indexFileExcerpts(Short.MAX_VALUE);
         }
 
         public Builder basePath(String basePath) {
