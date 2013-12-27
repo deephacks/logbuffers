@@ -12,7 +12,7 @@ The purpose of logbuffers is to provide a simple, reliable, low latency disk sto
 
 ```java
 // create a buffer
-LogBuffer buffer = new Builder().build();
+LogBuffer buffer = new Builder().basePath("/tmp/logbuffer").build();
 
 // write to buffer
 buffer.write("log message".getBytes());
