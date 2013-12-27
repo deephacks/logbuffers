@@ -1,4 +1,4 @@
-### loguffers - fast persistent buffers for streaming data. 
+### logbuffers - fast persistent buffers for streaming data. 
 
 
 The purpose of logbuffers is to provide a simple, reliable, low latency disk storage with the intent of decoupling readers and writers, favoring batch processing in high throughput systems.
