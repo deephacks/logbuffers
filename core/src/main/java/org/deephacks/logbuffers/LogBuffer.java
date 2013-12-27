@@ -149,6 +149,9 @@ public class LogBuffer {
      * @throws IOException
      */
     public synchronized void close() throws IOException {
+        if (cachedExecutor != null) {
+            cachedExecutor.shutdown();
+        }
         excerptAppender.close();
         excerptTailer.close();
         rollingChronicle.close();

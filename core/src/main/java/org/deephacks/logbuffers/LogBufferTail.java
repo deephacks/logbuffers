@@ -47,6 +47,10 @@ public class LogBufferTail {
         this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this), 0, delay, unit);
     }
 
+    public void shutdown() {
+        logBuffer.getCachedExecutor().shutdown();
+    }
+
     private static final class TailSchedule implements Runnable {
         private LogBufferTail tailer;
 

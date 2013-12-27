@@ -50,4 +50,9 @@ public class ObjectLogBuffer {
         }
         return objects;
     }
+
+    public void close() throws IOException {
+        logBuffer.close();
+    }
+
 }
