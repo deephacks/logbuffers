@@ -10,6 +10,13 @@ import java.util.Random;
 import java.util.UUID;
 
 public class TestUtil {
+    public static List<String> randomStrings = new ArrayList<>();
+    static {
+        for (int i = 0; i < 1000; i++) {
+            randomStrings.add(UUID.randomUUID().toString());
+        }
+    }
+
     public static String tmpDir() {
         try {
             return Files.createTempDirectory("logBufferTest-" + UUID.randomUUID().toString()).toString();
@@ -28,6 +35,10 @@ public class TestUtil {
 
     public static B randomB() {
         return new B(UUID.randomUUID().toString(), new Random().nextLong());
+    }
+
+    public static String randomCachedItem() {
+        return randomStrings.get(Math.abs(new Random().nextInt()) % randomStrings.size());
     }
 
     public static JacksonSerializer getSerializer() {
