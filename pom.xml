@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.deephacks</groupId>
+  <artifactId>logbuffers-root</artifactId>
+  <name>logbuffers</name>
+  <packaging>pom</packaging>
+  <version>0.1.0</version>
+  <description>Fast persistent buffers for streaming data.</description>
+  <url>http://logbuffers.deephacks.org</url>
+  <inceptionYear>2013</inceptionYear>
+  <mailingLists>
+    <mailingList>
+      <name>Development List</name>
+      <post>logbuffers-dev@googlegroups.com</post>
+    </mailingList>
+    <mailingList>
+      <name>User List</name>
+      <post>logbuffers-user@googlegroups.com</post>
+    </mailingList>
+  </mailingLists>
+  <issueManagement>
+    <system>github</system>
+    <url>https://github.com/deephacks/logbuffers/issues</url>
+  </issueManagement>
+  <scm>
+    <connection>scm:git:git@github.com:deephacks/logbuffers.git</connection>
+    <developerConnection>scm:git:git@github.com:deephacks/logbuffers.git</developerConnection>
+    <url>scm:git:git@github.com/deephacks/logbuffers</url>
+  </scm>
+  <licenses>
+    <license>
+      <name>Apache License</name>
+      <url>license.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Kristoffer Sjogren</name>
+      <id>krisskross</id>
+      <email>stoffe -at- gmail.com</email>
+      <organization/>
+      <roles>
+        <role>Developer</role>
+      </roles>
+      <url>http://stoffe.deephacks.org/</url>
+      <timezone>+1</timezone>
+    </developer>
+  </developers>
+
+  <properties>
+    <version.logbuffers>0.0.1</version.logbuffers>
+    <!-- plugins -->
+    <version.surefire-plugin>2.10</version.surefire-plugin>
+    <version.compiler-plugin>2.3.2</version.compiler-plugin>
+    <version.jar-plugin>2.3.2</version.jar-plugin>
+    <version.javadoc-plugin>2.8</version.javadoc-plugin>
+    <version.findbugs-plugin>2.4.0-SNAPSHOT</version.findbugs-plugin>
+    <version.source-plugin>2.1.2</version.source-plugin>
+    <!-- provided -->
+    <maven.compiler.source>1.7</maven.compiler.source>
+    <maven.compiler.target>1.7</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+  </properties>
+
+  <modules>
+    <module>core</module>
+  </modules>
+
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <version>0.6.3.201306030806</version>
+          <executions>
+            <execution>
+              <goals>
+                <goal>prepare-agent</goal>
+              </goals>
+            </execution>
+            <execution>
+              <id>report</id>
+              <goals>
+                <goal>report</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <version>${version.compiler-plugin}</version>
+        <configuration>
+          <showDeprecation>false</showDeprecation>
+          <showWarnings>true</showWarnings>
+          <optimize>true</optimize>
+          <fork>true</fork>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <version>${version.jar-plugin}</version>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Specification-Title>${project.name}</Specification-Title>
+              <Specification-Version>${project.version}</Specification-Version>
+              <Specification-Vendor>deephacks</Specification-Vendor>
+              <Implementation-Title>${project.name}</Implementation-Title>
+              <Implementation-Version>${project.version}</Implementation-Version>
+              <Implementation-Vendor>deephacks</Implementation-Vendor>
+              <Implementation-Vendor-Id>org.deephacks</Implementation-Vendor-Id>
+              <url>http://logbuffers.deephacks.org</url>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <groupId>org.apache.maven.plugins</groupId>
+        <version>${version.surefire-plugin}</version>
+        <configuration>
+          <trimStackTrace>false</trimStackTrace>
+          <printSummary>true</printSummary>
+          <useFile>true</useFile>
+          <redirectTestOutputToFile>true</redirectTestOutputToFile>
+          <includes>
+            <include>**/*TestCase.java</include>
+            <include>**/*TestSuite.java</include>
+            <include>**/*Test.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>${version.source-plugin}</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <descriptors>
+            <descriptor>assembly.xml</descriptor>
+          </descriptors>
+          <tarLongFileMode>gnu</tarLongFileMode>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <repositories>
+    <repository>
+      <id>maven2</id>
+      <name>Maven Central Repository</name>
+      <layout>default</layout>
+      <url>http://repo2.maven.org/maven2</url>
+    </repository>
+    <repository>
+      <id>jboss-groups</id>
+      <name>JBoss Group Repsitory</name>
+      <layout>default</layout>
+      <url>http://repository.jboss.org/nexus/content/groups/public</url>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>14.0.1</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.10</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <version>1.8.5</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.unitils</groupId>
+      <artifactId>unitils-core</artifactId>
+      <version>3.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.3.0</version>
+      <scope>test</scope>
+    </dependency>
+
+
+  </dependencies>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.deephacks</groupId>
+        <artifactId>logbuffers-core</artifactId>
+        <version>${version.logbuffers}</version>
+        <scope>compile</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>14.0.1</version>
+        <scope>compile</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  <distributionManagement>
+    <repository>
+      <id>sonatype-nexus-staging</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+</project>
