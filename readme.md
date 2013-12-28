@@ -40,16 +40,12 @@ Tail utility that keep track of what logs have been processed. Forwards log proc
 
 
 ```java
-new LogBufferTail(logBuffer, new LogTail()).forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
+new LogBufferTail(buffer, new LogTail()).forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
 
-
-public static class LogTail implements Tail<Log> {
-  // called once every 0.5 seconds with unseen/new logs
+class LogTail implements Tail<Log> {
   public void process(List<Log> logs) { 
-    // process
+    // group, aggregate, sum or whatever 
   }
-
-  public String getName() { return "unique name"; }
 }
 
 ```
