@@ -49,3 +49,28 @@ class LogTail implements Tail<Log> {
 }
 
 ```
+
+
+### object logs
+
+Logs can be written and read in any object format in the same way as the raw log buffer. Note that each
+tail instance track its specific type ONLY. This is by design so that different log types can be processed and
+reported separately.
+
+```java
+
+ObjectLogBuffer objectBuffer = new ObjectLogBuffer(buffer, new ProtobufLogSerializer());
+
+new ObjectLogBufferTail(objectBuffer, new PageViewTail()).forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
+
+objectBuffer.write(new PageView("1"));
+objectBuffer.write(new PageView("2"));
+objectBuffer.write(new PageView("3"));
+
+class PageViewTail implements Tail<PageView> {
+  public void process(List<PageView> pageViews) { 
+    // group and report 
+  }
+}
+
+```
