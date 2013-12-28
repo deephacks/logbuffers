@@ -59,14 +59,19 @@ reported separately.
 
 ```java
 
-ObjectLogBuffer objectBuffer = new ObjectLogBuffer(buffer, new ProtobufLogSerializer());
+// using protobufs
+ObjectLogBuffer objectBuffer = new ObjectLogBuffer(buffer, new ProtobufSerializer());
 
 new ObjectLogBufferTail(objectBuffer, new PageViewTail()).forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
 new ObjectLogBufferTail(objectBuffer, new VisitTail()).forwardWithFixedDelay(1, TimeUnit.SECONDS);
 
-objectBuffer.write(new PageView("1"));
-objectBuffer.write(new Visit("1"));
-objectBuffer.write(new PageView("2"));
+// write different types of protobuf logs to buffer
+objectBuffer.write(PageView.newBuilder().setMsg("1").build());
+objectBuffer.write(Visit.newBuilder().setMsg("1").build());
+objectBuffer.write(PageView.newBuilder().setMsg("2").build());
+
+// select only PageView protobufs
+objectBuffer.select(PageView.class, 0);
 
 class PageViewTail implements Tail<PageView> {
   public void process(List<PageView> pageViews) { 
