@@ -140,6 +140,14 @@ public class LogBuffer {
         }
     }
 
+    /**
+     * Select a list of log objects for a give period, give each timestamp of each log.
+     *
+     * @param fromTimeMs from (inclusive)
+     * @param toTimeMs to (inclusive)
+     * @return list of matching logs
+     * @throws IOException
+     */
     public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
         long writeIndex = index.getIndex();
         synchronized (readLock) {
@@ -149,20 +157,6 @@ public class LogBuffer {
             while (log.getTimestamp() > toTimeMs) {
                 log = Log.read(excerptTailer, read);
             }
-            while (log.getTimestamp() >= fromTimeMs) {
-                messages.addFirst(log);
-                log = Log.read(excerptTailer, --read);
-            }
-            return messages;
-        }
-    }
-
-    public List<Log> selectPeriod(long fromTimeMs) throws IOException {
-        long writeIndex = index.getIndex();
-        synchronized (readLock) {
-            LinkedList<Log> messages = new LinkedList<>();
-            long read = writeIndex - 1;
-            Log log = Log.read(excerptTailer, read);
             while (log.getTimestamp() >= fromTimeMs) {
                 messages.addFirst(log);
                 log = Log.read(excerptTailer, --read);
