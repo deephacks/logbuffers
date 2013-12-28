@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 /**
  * Keeps track of the index for a specific reader or writer.
  */
-class Index {
+final class Index {
     private SingleMappedFileCache fileCache;
     private ByteBuffer buffer;
 

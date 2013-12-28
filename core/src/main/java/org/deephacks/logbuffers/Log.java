@@ -10,7 +10,7 @@ import java.util.Arrays;
  *
  * If no type is specified, the log is treated as a raw binary log.
  */
-public class Log {
+public final class Log {
     public static long DEFAULT_TYPE = 1;
     private long type = DEFAULT_TYPE;
     private final byte[] content;

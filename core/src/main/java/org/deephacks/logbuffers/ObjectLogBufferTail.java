@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @param <T> type of logs to process.
  */
-public class ObjectLogBufferTail<T> {
+public final class ObjectLogBufferTail<T> {
     private ObjectLogBuffer logBuffer;
     private Index readIndex;
     private Tail<T> tail;

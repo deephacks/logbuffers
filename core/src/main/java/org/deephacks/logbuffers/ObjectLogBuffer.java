@@ -15,13 +15,12 @@ import java.util.concurrent.ScheduledExecutorService;
  * using json, protobuf, avro or similar.
  *
  */
-public class ObjectLogBuffer {
+public final class ObjectLogBuffer {
     /** the raw underlying log buffer */
     private final LogBuffer logBuffer;
 
     /** serialization mechanism for all objects flowing in and out of the log buffer */
     private ObjectLogSerializer serializer;
-    private ScheduledExecutorService cachedExecutor;
 
     /**
      * @param logBuffer the raw underlying log buffer
