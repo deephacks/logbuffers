@@ -2,6 +2,7 @@ package org.deephacks.logbuffers;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -16,6 +17,7 @@ public class LogBufferTail {
     private LogBuffer logBuffer;
     private Index readIndex;
     private Tail<Log> tail;
+    private ScheduledFuture<?> scheduledFuture;
 
     public LogBufferTail(LogBuffer logBuffer, Tail<Log> tail) throws IOException {
         this.logBuffer = logBuffer;
@@ -43,12 +45,24 @@ public class LogBufferTail {
      * @param delay the delay between the termination of one execution and the commencement of the next.
      * @param unit time unit of the delay parameter.
      */
-    public void forwardWithFixedDelay(int delay, TimeUnit unit) {
-        this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this), 0, delay, unit);
+    public synchronized void forwardWithFixedDelay(int delay, TimeUnit unit) {
+        if (scheduledFuture != null) {
+            return;
+        }
+        scheduledFuture = this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this), 0, delay, unit);
     }
 
-    public void shutdown() {
-        logBuffer.getCachedExecutor().shutdown();
+    /**
+     * Cancel the periodic tail task.
+     *
+     * @param mayInterruptIfRunning if the thread executing this
+     * task should be interrupted; otherwise, in-progress tasks are allowed
+     * to complete
+     */
+    public void cancel(boolean mayInterruptIfRunning) {
+        if (scheduledFuture != null) {
+            scheduledFuture.cancel(mayInterruptIfRunning);
+        }
     }
 
     private static final class TailSchedule implements Runnable {

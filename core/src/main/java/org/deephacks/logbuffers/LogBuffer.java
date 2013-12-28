@@ -27,7 +27,7 @@ import java.util.concurrent.ScheduledExecutorService;
  * The physical separation of a log buffer is an implementation detail that the user
  * does not need to care about.
  */
-public class LogBuffer {
+public final class LogBuffer {
     /** system tmp dir*/
     private static final String TMP_DIR = System.getProperty("java.io.tmpdir");
 

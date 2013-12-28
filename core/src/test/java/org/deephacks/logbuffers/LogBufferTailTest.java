@@ -29,8 +29,8 @@ public class LogBufferTailTest {
 
     @After
     public void after() throws IOException {
+        bufferTail.cancel(true);
         logBuffer.close();
-        bufferTail.shutdown();
     }
 
     @Test
