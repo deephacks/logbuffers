@@ -10,11 +10,21 @@ Buffers are stored in continuously rolling files and every buffer retain every l
 
 Normally a consumer will advance its index linearly as it reads logs, but can in fact consume logs in any order it likes. A consumer may want reset the index to an arbitrary position in order to reprocess logs in failure scenarios for example.
 
+### Performance
+
 - Writing one million 36 character logs concurrently takes approximately 1.8 seconds on modern hardware.
 - Reading the same one million logs takes approximately 200 milliseconds.
 - 1 hour processing downtime in a system that produce 10000 logs/sec (36m backlog) will be catched up in less than a minute.
 
-### selecting logs
+
+### Reliability
+
+- Buffers should not loose any data if the JVM crash and core dumps.
+- Logs may be lost during power failures or a total OS crash.
+- Buffers can be configured for synchronous writes and survive power failures.
+
+
+### Selecting logs
 
 A consumer may use the index to select any logs. A buffer does not track selected logs so the consumer itself may need to keep track of log indexes to avoid loosing or duplicating logs. 
 
@@ -34,7 +44,7 @@ List<Log> logs = logBuffer.select(10, 20);
 ```
 
 
-### tailing logs
+### Tailing logs
 
 A buffer can track log processing through tail instances. Each tail instance have a separate and persistent read index. The read index can be forwarded periodically and/or manually. Logs are considered successfully processed by the tail instance if no exception occured during the process() method. Any exception force the logs to be re-delivered next round, maybe along with additional unseen/new logs.
 
@@ -61,7 +71,7 @@ class LogTail implements Tail<Log> {
 ```
 
 
-### object logs
+### Object logs
 
 Logs can be written and read in any object format in the same way as the raw log buffer. Note that each
 tail instance track its specific type ONLY. This is by design so that different log types can be processed and
