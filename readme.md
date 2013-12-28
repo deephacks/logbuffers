@@ -36,11 +36,21 @@ List<Log> logs = logBuffer.select(10, 20);
 
 ### tailing logs
 
-Tailing is a utility that track what logs have been processed by which tail instance. Log processing forwards periodically (or manually), notifying the tail instance each round. Logs are considered successfully processed if no exception occur during processing. If an exception occur, the logs will be delivered next round, maybe along with additional unseen/new logs. Successfully read indexes are persisted to disk.
+A buffer can track log processing through tail instances. Each tail instance have a separate and persistent read index. The read index can be forwarded periodically and/or manually. Logs are considered successfully processed by the tail instance if no exception occured during the process() method. Any exception force the logs to be re-delivered next round, maybe along with additional unseen/new logs.
 
 
 ```java
-buffer.forwardWithFixedDelay(new LogTail(), 500, TimeUnit.MILLISECONDS);
+
+LogTail tail = new LogTail();
+
+// manual tail forwarding
+buffer.forward(tail)
+
+// schedule periodic tail forwarding
+buffer.forwardWithFixedDelay(tail, 500, TimeUnit.MILLISECONDS);
+
+// cancel tail schedule
+buffer.cancel(tail);
 
 class LogTail implements Tail<Log> {
   public void process(List<Log> logs) { 
