@@ -141,7 +141,8 @@ public class LogBuffer {
     }
 
     /**
-     * Select a list of log objects for a give period, give each timestamp of each log.
+     * Select a list of log objects for a given period of time with respect
+     * to the timestamp of each log.
      *
      * @param fromTimeMs from (inclusive)
      * @param toTimeMs to (inclusive)
