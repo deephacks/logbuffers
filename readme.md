@@ -16,7 +16,7 @@ Normally a consumer will advance its index linearly as it reads logs, but can in
 
 ### selecting logs
 
-The manual way for a consumer to process logs, where the consumer iself must keep track of which logs have been processed.
+A consumer may use the index to select any logs. A buffer does not track selected logs so the consumer itself may need to keep track of log indexes to avoid loosing or duplicating logs. 
 
 ```java
 // create a buffer
@@ -36,7 +36,7 @@ List<Log> logs = logBuffer.select(10, 20);
 
 ### tailing logs
 
-Tail utility that keep track of what logs have been processed. Forwards log processing periodically, notifying the tail each round. Successfully processed log indexes are persisted to local disk. Logs are considered successfully processed if no exception occur during processing. If an exception occur, the logs will be delivered next round, maybe along with additional unseen/new logs.
+Tailing is a utility that track what logs have been processed by which tail instance. Log processing forwards periodically (or manually), notifying the tail instance each round. Logs are considered successfully processed if no exception occur during processing. If an exception occur, the logs will be delivered next round, maybe along with additional unseen/new logs. Successfully read indexes are persisted to disk.
 
 
 ```java
