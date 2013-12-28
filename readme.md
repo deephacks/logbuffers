@@ -40,7 +40,7 @@ Tailing is a utility that track what logs have been processed by which tail inst
 
 
 ```java
-new LogBufferTail(buffer, new LogTail()).forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
+buffer.forwardWithFixedDelay(new LogTail(), 500, TimeUnit.MILLISECONDS);
 
 class LogTail implements Tail<Log> {
   public void process(List<Log> logs) { 
@@ -60,10 +60,10 @@ reported separately.
 ```java
 
 // using protobufs
-ObjectLogBuffer objectBuffer = new ObjectLogBuffer(buffer, new ProtobufSerializer());
+LogBuffer buffer = new Builder().addSerializer(new ProtobufSerializer()).build();
 
-new ObjectLogBufferTail(objectBuffer, new PageViewTail()).forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
-new ObjectLogBufferTail(objectBuffer, new VisitTail()).forwardWithFixedDelay(1, TimeUnit.SECONDS);
+buffer.forwardWithFixedDelay(new PageViewTail(), 500, TimeUnit.MILLISECONDS);
+buffer.forwardWithFixedDelay(new VisitTail(), 1, TimeUnit.SECONDS);
 
 // write different types of protobuf logs to buffer
 objectBuffer.write(PageView.newBuilder().setMsg("1").build());
@@ -71,7 +71,7 @@ objectBuffer.write(Visit.newBuilder().setMsg("1").build());
 objectBuffer.write(PageView.newBuilder().setMsg("2").build());
 
 // select only PageView protobufs
-objectBuffer.select(PageView.class, 0);
+List<PageView> pageViews = objectBuffer.select(PageView.class, 0);
 
 class PageViewTail implements Tail<PageView> {
   public void process(List<PageView> pageViews) { 
