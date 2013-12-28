@@ -1,6 +1,7 @@
 package org.deephacks.logbuffers;
 
 import org.deephacks.logbuffers.LogBuffer.Builder;
+import org.deephacks.logbuffers.json.JacksonSerializer;
 import org.deephacks.logbuffers.util.TestUtil;
 import org.deephacks.logbuffers.util.TestUtil.A;
 import org.deephacks.logbuffers.util.TestUtil.B;
@@ -39,7 +40,7 @@ public class ObjectLogBufferTailTest {
         tailB = new TailB();
 
         logBuffer = new Builder().basePath(TestUtil.tmpDir()).build();
-        objectLogBuffer = new ObjectLogBuffer(logBuffer, TestUtil.getJacksonSerializer());
+        objectLogBuffer = new ObjectLogBuffer(logBuffer, new JacksonSerializer());
 
         bufferTailA = new ObjectLogBufferTail<>(objectLogBuffer, tailA);
         bufferTailB = new ObjectLogBufferTail<>(objectLogBuffer, tailB);

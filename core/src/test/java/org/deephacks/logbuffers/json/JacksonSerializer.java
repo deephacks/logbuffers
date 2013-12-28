@@ -7,6 +7,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import org.deephacks.logbuffers.ObjectLogSerializer;
+import org.deephacks.logbuffers.util.TestUtil.A;
+import org.deephacks.logbuffers.util.TestUtil.B;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -15,6 +17,11 @@ public class JacksonSerializer implements ObjectLogSerializer {
     private BiMap<Long, Class<?>> classTypeMapping = HashBiMap.create();
 
     private ObjectMapper mapper = new ObjectMapper();
+
+    public JacksonSerializer() {
+        put(A.class, 123L);
+        put(B.class, 124L);
+    }
 
     public void put(Class<?> cls, Long type) {
         classTypeMapping.put(type, cls);
