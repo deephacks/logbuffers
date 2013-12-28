@@ -12,8 +12,7 @@ Normally a consumer will advance its index linearly as it reads logs, but can in
 
 - Writing one million 36 character logs concurrently takes approximately 1.8 seconds on modern hardware.
 - Reading the same one million logs takes approximately 200 milliseconds.
-
-
+- 1 hour processing downtime in a system that produce 10000 logs/sec (36m backlog) will be catched up in less than a minute.
 
 ### selecting logs
 
