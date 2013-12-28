@@ -33,12 +33,12 @@ public class LogBufferTest {
     @Test
     public void test_write_read() throws IOException {
         // one log
-        logBuffer.write(log1);
+        log1 = logBuffer.write(log1);
         List<Log> select = logBuffer.select(0);
         assertThat(select.get(0), is(log1));
 
         // write another
-        logBuffer.write(log2);
+        log2 = logBuffer.write(log2);
         select = logBuffer.select(0);
         assertThat(select.size(), is(2));
         assertThat(select.get(0), is(log1));
@@ -53,11 +53,11 @@ public class LogBufferTest {
     @Test
     public void test_write_read_period() throws IOException {
         // one log
-        logBuffer.write(log1);
-        logBuffer.write(log2);
-        logBuffer.write(log3);
-        logBuffer.write(log4);
-        logBuffer.write(log5);
+        log1 = logBuffer.write(log1);
+        log2 = logBuffer.write(log2);
+        log3 = logBuffer.write(log3);
+        log4 = logBuffer.write(log4);
+        log5 = logBuffer.write(log5);
 
         List<Log> select = logBuffer.selectPeriod(3, 5);
         assertThat(select.size(), is(3));

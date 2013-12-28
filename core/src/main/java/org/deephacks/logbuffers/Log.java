@@ -15,21 +15,29 @@ public class Log {
     private long type = DEFAULT_TYPE;
     private final byte[] content;
     private final long timestamp;
+    private long index = -1;
 
-    public Log(long type, byte[] content, long timestamp) {
+    public Log(long type, byte[] content, long timestamp, long index) {
         this.type = type;
         this.content = content;
         this.timestamp = timestamp;
+        this.index = index;
     }
 
     public Log(byte[] content) {
-        this(DEFAULT_TYPE, content, System.currentTimeMillis());
+        this(DEFAULT_TYPE, content, System.currentTimeMillis(), -1);
     }
 
     public Log(long type, byte[] content) {
-        this(type, content, System.currentTimeMillis());
+        this(type, content, System.currentTimeMillis(), -1);
     }
 
+    Log(Log log, long index) {
+        this.timestamp = log.timestamp;
+        this.content = log.content;
+        this.type = log.type;
+        this.index = index;
+    }
 
     public long getType() {
         return type;
@@ -64,7 +72,7 @@ public class Log {
         int messageSize = tailer.readInt();
         byte[] message = new byte[messageSize];
         tailer.read(message);
-        return new Log(type, message, timestamp);
+        return new Log(type, message, timestamp, index);
     }
 
     @Override
@@ -74,9 +82,10 @@ public class Log {
 
         Log log = (Log) o;
 
+        if (index != log.index) return false;
+        if (timestamp != log.timestamp) return false;
         if (type != log.type) return false;
         if (!Arrays.equals(content, log.content)) return false;
-        if (getLength() != log.getLength()) return false;
 
         return true;
     }
@@ -84,8 +93,19 @@ public class Log {
     @Override
     public int hashCode() {
         int result = (int) (type ^ (type >>> 32));
-        result = 31 * result + Arrays.hashCode(content);
-        result = 31 * result + getLength();
+        result = 31 * result + (content != null ? Arrays.hashCode(content) : 0);
+        result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
+        result = 31 * result + (int) (index ^ (index >>> 32));
         return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Log{" +
+                "index=" + index +
+                ", timestamp=" + timestamp +
+                ", type=" + type +
+                ", content=" + Arrays.toString(content) +
+                '}';
     }
 }

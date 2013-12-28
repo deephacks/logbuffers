@@ -79,8 +79,8 @@ public class LogBuffer {
      * @param log data.
      * @throws IOException
      */
-    public void write(byte[] log) throws IOException {
-        write(new Log(log));
+    public Log write(byte[] log) throws IOException {
+        return write(new Log(log));
     }
 
     /**
@@ -89,8 +89,8 @@ public class LogBuffer {
      * @param log data as a UTF-8 string.
      * @throws IOException
      */
-    public void write(String log) throws IOException {
-        write(new Log(log.getBytes(Charsets.UTF_8)));
+    public Log write(String log) throws IOException {
+        return write(new Log(log.getBytes(Charsets.UTF_8)));
     }
 
     /**
@@ -99,10 +99,10 @@ public class LogBuffer {
      * @param log raw object log.
      * @throws IOException
      */
-    public void write(Log log) throws IOException {
+    public Log write(Log log) throws IOException {
         synchronized (writeLock) {
             log.write(excerptAppender);
-            index.getAndIncrement();
+            return new Log(log, index.getAndIncrement());
         }
     }
 

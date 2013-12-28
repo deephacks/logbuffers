@@ -36,20 +36,20 @@ public class LogBufferTailTest {
     @Test
     public void test_manual_forward() throws IOException {
         // one log
-        logBuffer.write(log1);
+        log1 = logBuffer.write(log1);
         bufferTail.forward();
         assertThat(tail.logs.size(), is(1));
         assertThat(tail.logs.get(0), is(log1));
 
         // write another
-        logBuffer.write(log2);
+        log2 = logBuffer.write(log2);
         bufferTail.forward();
         assertThat(tail.logs.size(), is(2));
         assertThat(tail.logs.get(1), is(log2));
 
         // write multiple
-        logBuffer.write(log1);
-        logBuffer.write(log2);
+        log1 = logBuffer.write(log1);
+        log2 = logBuffer.write(log2);
         bufferTail.forward();
         assertThat(tail.logs.size(), is(4));
         assertThat(tail.logs.get(2), is(log1));
@@ -61,21 +61,21 @@ public class LogBufferTailTest {
     public void test_scheduled_forward() throws Exception {
         bufferTail.forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
         // one log
-        logBuffer.write(log1);
+        log1 = logBuffer.write(log1);
         Thread.sleep(600);
         assertThat(tail.logs.size(), is(1));
         assertThat(tail.logs.get(0), is(log1));
 
         // write another
-        logBuffer.write(log2);
+        log2 = logBuffer.write(log2);
         Thread.sleep(600);
 
         assertThat(tail.logs.size(), is(2));
         assertThat(tail.logs.get(1), is(log2));
 
         // write multiple
-        logBuffer.write(log1);
-        logBuffer.write(log2);
+        log1 = logBuffer.write(log1);
+        log2 = logBuffer.write(log2);
         Thread.sleep(600);
 
         assertThat(tail.logs.size(), is(4));
