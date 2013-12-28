@@ -4,10 +4,17 @@ import com.google.common.base.Optional;
 
 /**
  * Serialize objects to and from raw object log format.
+ *
+ * Each serializer needs to keep a mapping between class and a unique identifier.
+ *
+ * The reason for this mapping is to save computing resources. Consider a
+ * regular java class name that occupy around 50 bytes and a system that produce
+ * 10000 logs/sec. This is roughly 0.5MB per sec (or 1.8 GB per day) of wasted
+ * latency, space and processing power.
  */
 public interface ObjectLogSerializer {
     /**
-     * Get the unique number assigned for the specific class.
+     * Get the unique number mapped to a specific class.
      *
      * @param type class of object to be serialized
      * @return unique number or absent if no mapping exist.
@@ -30,8 +37,7 @@ public interface ObjectLogSerializer {
      * Optional return object.
      *
      * @param log that was queried.
-     * @param type object type.
-     * @param <T> generic type.
+     * @param type the unique number that map the binary data to a specific class.
      * @return Present if this json know how to serialize the log object.
      */
     public <T> Optional<T> deserialize(byte[] log, long type);
