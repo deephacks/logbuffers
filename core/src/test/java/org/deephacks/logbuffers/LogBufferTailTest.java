@@ -28,7 +28,7 @@ public class LogBufferTailTest {
 
     @After
     public void after() throws IOException {
-        logBuffer.cancel(tail, true);
+        logBuffer.cancel(TailLog.class);
         logBuffer.close();
     }
 

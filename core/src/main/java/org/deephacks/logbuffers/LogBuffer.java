@@ -16,10 +16,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 /**
  * A log buffer persist data items sequentially on local disk.
  *
- * Every written log is assigned a unique index identifier that works like an sequential offset.
+ * Every written log is assigned a unique writeIndex identifier that works like an sequential offset.
  * Indexes are used by readers to select one or more logs.
  *
  * A logical log buffer is divided into a set of files in a configurable directory.
@@ -39,8 +41,8 @@ public final class LogBuffer {
     /** optional executor used only by scheduled tailing */
     private ScheduledExecutorService cachedExecutor;
 
-    /** the current write index */
-    private Index index;
+    /** the current write writeIndex */
+    private Index writeIndex;
 
     /** rolling chronicle, log buffer files are never removed ATM  */
     private RollingChronicle rollingChronicle;
@@ -60,13 +62,13 @@ public final class LogBuffer {
     /** path where log buffer files are stored */
     private String basePath;
 
-    private ConcurrentHashMap<Tail<?>, LogBufferTail<?>> tails = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Class<?>, LogBufferTail<?>> tails = new ConcurrentHashMap<>();
 
     private Serializers serializers;
 
     private LogBuffer(Builder builder) throws IOException {
         this.basePath = builder.basePath.or(DEFAULT_BASE_PATH);
-        this.index = new Index(basePath + "/writer");
+        this.writeIndex = new Index(basePath + "/writer");
         this.rollingChronicle = new RollingChronicle(basePath, builder.config);
         this.excerptAppender = rollingChronicle.createAppender();
         this.excerptTailer = rollingChronicle.createTailer();
@@ -109,7 +111,7 @@ public final class LogBuffer {
     public Log write(Log log) throws IOException {
         synchronized (writeLock) {
             log.write(excerptAppender);
-            return new Log(log, index.getAndIncrement());
+            return new Log(log, writeIndex.getAndIncrement());
         }
     }
 
@@ -117,7 +119,7 @@ public final class LogBuffer {
      * Write an object into the log buffer.
      *
      * @param object to be written.
-     * @return the unique index assigned to the object.
+     * @return the unique writeIndex assigned to the object.
      * @throws IOException
      */
     public long write(Object object) throws IOException {
@@ -129,7 +131,7 @@ public final class LogBuffer {
      *
      * @param object to be written
      * @param timestamp of the object used by queries
-     * @return the unique index assigned to the object.
+     * @return the unique writeIndex assigned to the object.
      * @throws IOException
      */
     public long write(Object object, long timestamp) throws IOException {
@@ -141,25 +143,25 @@ public final class LogBuffer {
     }
 
     /**
-     * Select a list of log objects from a specific index up until the
+     * Select a list of log objects from a specific writeIndex up until the
      * most recent log written.
      *
-     * @param fromIndex index to read from.
+     * @param fromIndex writeIndex to read from.
      * @return A list of raw object logs.
      * @throws IOException
      */
     public List<Log> select(long fromIndex) throws IOException {
-        long writeIdx = index.getIndex();
+        long writeIdx = writeIndex.getIndex();
         return select(fromIndex, writeIdx);
     }
 
 
     /**
-     * Select a list of log objects from a specific index up until a
-     * provided index.
+     * Select a list of log objects from a specific writeIndex up until a
+     * provided writeIndex.
      *
-     * @param fromIndex index to read from.
-     * @param toIndex index to read up until.
+     * @param fromIndex writeIndex to read from.
+     * @param toIndex writeIndex to read up until.
      * @return A list of raw object logs.
      * @throws IOException
      */
@@ -184,7 +186,7 @@ public final class LogBuffer {
      * @throws IOException
      */
     public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
-        long writeIndex = index.getIndex();
+        long writeIndex = this.writeIndex.getIndex();
         synchronized (readLock) {
             LinkedList<Log> messages = new LinkedList<>();
             long read = writeIndex - 1;
@@ -206,7 +208,7 @@ public final class LogBuffer {
      * @see LogBuffer
      */
     public <T> List<T> select(Class<T> type, long fromIndex) throws IOException {
-        return select(type, fromIndex, getIndex());
+        return select(type, fromIndex, getWriteIndex());
     }
 
     /**
@@ -248,21 +250,33 @@ public final class LogBuffer {
      * @throws IOException
      */
     public synchronized void close() throws IOException {
+        excerptAppender.close();
+        writeIndex.close();
+        for (Class<?> cls : tails.keySet()) {
+            LogBufferTail<?> logBufferTail = tails.remove(cls);
+            logBufferTail.cancel(true);
+            logBufferTail.close();
+        }
         if (cachedExecutor != null) {
             cachedExecutor.shutdown();
         }
-        index.close();
-        excerptAppender.close();
         excerptTailer.close();
         rollingChronicle.close();
     }
 
     /**
-     * @return the current write index.
+     * @return the current write writeIndex.
      * @throws IOException
      */
-    public long getIndex() throws IOException {
-        return index.getIndex();
+    public long getWriteIndex() throws IOException {
+        return writeIndex.getIndex();
+    }
+
+    /**
+     * Cancel the periodic tail task.
+     */
+    public <T> void cancel(Class<? extends Tail<T>> cls) throws IOException {
+        cancel(cls, false);
     }
 
     /**
@@ -272,9 +286,11 @@ public final class LogBuffer {
      * task should be interrupted; otherwise, in-progress tasks are allowed
      * to complete
      */
-    public void cancel(Tail<?> tail, boolean mayInterruptIfRunning) throws IOException {
-        LogBufferTail<?> logBufferTail = putIfAbsent(tail);
-        logBufferTail.cancel(mayInterruptIfRunning);
+    public <T> void cancel(Class<? extends Tail<T>> cls, boolean mayInterruptIfRunning) throws IOException {
+        LogBufferTail<?> logBufferTail = tails.remove(cls);
+        if (logBufferTail != null) {
+            logBufferTail.cancel(mayInterruptIfRunning);
+        }
     }
 
     /**
@@ -289,11 +305,22 @@ public final class LogBuffer {
     }
 
     private <T> LogBufferTail<T> putIfAbsent(Tail<?> tail) throws IOException {
-        LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail, new LogBufferTail<>(this, tail));
+        LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTail<>(this, tail));
         if (logBufferTail == null) {
-            logBufferTail = tails.get(tail);
+            logBufferTail = tails.get(tail.getClass());
         }
         return (LogBufferTail<T>) logBufferTail;
+    }
+
+    /**
+     * Returns the index for a specific tail type.
+     *
+     * @return index for a specific tail type.
+     * @throws IOException
+     */
+    public <T> long getReadIndex(Class<? extends Tail<T>> cls) throws IOException {
+        LogBufferTail<?> logBufferTail = checkNotNull(tails.get(cls), "Tail type not registered " + cls) ;
+        return logBufferTail.getReadIndex();
     }
 
     public static class Builder {

@@ -34,7 +34,7 @@ class LogBufferTail<T> {
 
     String getTailId() {
         if (tailId == null) {
-            tailId = logBuffer.getBasePath() + "/" + tail.getClass().getName() + "@" + System.identityHashCode(tail);
+            tailId = logBuffer.getBasePath() + "/" + tail.getClass().getName();
         }
         return tailId;
     }
@@ -48,7 +48,10 @@ class LogBufferTail<T> {
         if (readIndex == null) {
             readIndex = new Index(getTailId());
         }
-        long currentWriteIndex = logBuffer.getIndex();
+        /**
+         * Fix paging mechanism to handle when read and write indexes are too far apart!
+         */
+        long currentWriteIndex = logBuffer.getWriteIndex();
         long currentReadIndex = readIndex.getIndex();
         List<T> messages = logBuffer.select(type, currentReadIndex, currentWriteIndex);
         tail.process(messages);
@@ -82,6 +85,19 @@ class LogBufferTail<T> {
         }
     }
 
+    /**
+     * @return the current read index.
+     */
+    synchronized long getReadIndex() throws IOException {
+        return readIndex.getIndex();
+    }
+
+    /**
+     * @throws IOException
+     */
+    public void close() throws IOException {
+        readIndex.close();
+    }
 
     private static final class TailSchedule implements Runnable {
         private LogBufferTail tailer;
