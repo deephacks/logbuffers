@@ -61,5 +61,9 @@ public class LogBufferTailConcurrencyTest {
         logBufferTail.forward();
         System.out.println("Read " + numLogs + " in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
         assertThat(tailLog.logs.size(), is(numLogs));
+        // check uniqueness and ordering
+        for (int i = 0; i < numLogs; i++) {
+            assertThat(tailLog.logs.get(i).getIndex(), is((long) i));
+        }
     }
 }
