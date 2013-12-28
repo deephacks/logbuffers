@@ -1,6 +1,6 @@
 package org.deephacks.logbuffers;
 
-import com.google.common.base.Optional;
+import com.google.common.collect.BiMap;
 
 /**
  * Serialize objects to and from raw object log format.
@@ -13,13 +13,13 @@ import com.google.common.base.Optional;
  * latency, space and processing power.
  */
 public interface ObjectLogSerializer {
+
     /**
      * Get the unique number mapped to a specific class.
      *
-     * @param type class of object to be serialized
      * @return unique number or absent if no mapping exist.
      */
-    public Optional<Long> getType(Class<?> type);
+    public BiMap<Long, Class<?>> getMapping();
 
     /**
      * Called when a new object is written to the object log buffer that
@@ -40,6 +40,6 @@ public interface ObjectLogSerializer {
      * @param type the unique number that map the binary data to a specific class.
      * @return Present if this json know how to serialize the log object.
      */
-    public <T> Optional<T> deserialize(byte[] log, long type);
+    public Object deserialize(byte[] log, long type);
 
 }

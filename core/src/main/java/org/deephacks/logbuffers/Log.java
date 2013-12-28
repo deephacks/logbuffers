@@ -10,14 +10,14 @@ import java.util.Arrays;
  *
  * If no type is specified, the log is treated as a raw binary log.
  */
-public final class Log {
+public class Log {
     public static long DEFAULT_TYPE = 1;
     private long type = DEFAULT_TYPE;
     private final byte[] content;
     private final long timestamp;
     private long index = -1;
 
-    public Log(long type, byte[] content, long timestamp, long index) {
+    public Log(Long type, byte[] content, long timestamp, long index) {
         this.type = type;
         this.content = content;
         this.timestamp = timestamp;

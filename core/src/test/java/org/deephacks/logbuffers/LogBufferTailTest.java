@@ -15,7 +15,6 @@ import static org.junit.Assert.*;
 
 public class LogBufferTailTest {
     LogBuffer logBuffer;
-    LogBufferTail bufferTail;
     TailLog tail;
 
     Log log1 = TestUtil.randomLog(1);
@@ -25,12 +24,11 @@ public class LogBufferTailTest {
     public void before() throws IOException {
         tail = new TailLog();
         logBuffer = new Builder().basePath(TestUtil.tmpDir()).build();
-        bufferTail = new LogBufferTail(logBuffer, tail);
     }
 
     @After
     public void after() throws IOException {
-        bufferTail.cancel(true);
+        logBuffer.cancel(tail, true);
         logBuffer.close();
     }
 
@@ -38,20 +36,20 @@ public class LogBufferTailTest {
     public void test_manual_forward() throws IOException {
         // one log
         log1 = logBuffer.write(log1);
-        bufferTail.forward();
+        logBuffer.forward(tail);
         assertThat(tail.logs.size(), is(1));
         assertThat(tail.logs.get(0), is(log1));
 
         // write another
         log2 = logBuffer.write(log2);
-        bufferTail.forward();
+        logBuffer.forward(tail);
         assertThat(tail.logs.size(), is(2));
         assertThat(tail.logs.get(1), is(log2));
 
         // write multiple
         log1 = logBuffer.write(log1);
         log2 = logBuffer.write(log2);
-        bufferTail.forward();
+        logBuffer.forward(tail);
         assertThat(tail.logs.size(), is(4));
         assertThat(tail.logs.get(2), is(log1));
         assertThat(tail.logs.get(3), is(log2));
@@ -60,7 +58,7 @@ public class LogBufferTailTest {
 
     @Test
     public void test_scheduled_forward() throws Exception {
-        bufferTail.forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
+        logBuffer.forwardWithFixedDelay(tail, 500, TimeUnit.MILLISECONDS);
         // one log
         log1 = logBuffer.write(log1);
         Thread.sleep(600);

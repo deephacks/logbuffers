@@ -19,15 +19,13 @@ import static org.junit.Assert.*;
 
 public class LogBufferTailConcurrencyTest {
     LogBuffer logBuffer;
-    LogBufferTail logBufferTail;
-    TailLog tailLog;
+    TailLog tail;
     int numLogs = 1_000_000;
 
     @Before
     public void before() throws IOException {
         logBuffer = new Builder().logsPerFile(numLogs).basePath(TestUtil.tmpDir()).build();
-        tailLog = new TailLog();
-        logBufferTail = new LogBufferTail(logBuffer, tailLog);
+        tail = new TailLog();
     }
 
     @After
@@ -58,12 +56,12 @@ public class LogBufferTailConcurrencyTest {
         latch.await();
         System.out.println("Wrote " + numLogs + " in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
         stopwatch = new Stopwatch().start();
-        logBufferTail.forward();
+        logBuffer.forward(tail);
         System.out.println("Read " + numLogs + " in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
-        assertThat(tailLog.logs.size(), is(numLogs));
+        assertThat(tail.logs.size(), is(numLogs));
         // check uniqueness and ordering
         for (int i = 0; i < numLogs; i++) {
-            assertThat(tailLog.logs.get(i).getIndex(), is((long) i));
+            assertThat(tail.logs.get(i).getIndex(), is((long) i));
         }
     }
 }

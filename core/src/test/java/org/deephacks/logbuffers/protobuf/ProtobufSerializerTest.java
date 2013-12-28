@@ -3,8 +3,6 @@ package org.deephacks.logbuffers.protobuf;
 
 import org.deephacks.logbuffers.LogBuffer;
 import org.deephacks.logbuffers.LogBuffer.Builder;
-import org.deephacks.logbuffers.ObjectLogBuffer;
-import org.deephacks.logbuffers.ObjectLogBufferTail;
 import org.deephacks.logbuffers.Tail;
 import org.deephacks.logbuffers.protobuf.ProtoLog.PageView;
 import org.deephacks.logbuffers.protobuf.ProtoLog.Visit;
@@ -22,12 +20,8 @@ import static org.junit.Assert.*;
 
 public class ProtobufSerializerTest {
 
-    ObjectLogBuffer objectLogBuffer;
     PageViewTail pageViewTail;
     VisitTail visitTail;
-
-    ObjectLogBufferTail<PageView> pageViewBufferTail;
-    ObjectLogBufferTail<Visit> visitBufferTail;
 
     LogBuffer logBuffer;
 
@@ -39,25 +33,25 @@ public class ProtobufSerializerTest {
 
     @Before
     public void before() throws IOException {
-        logBuffer = new Builder().basePath(TestUtil.tmpDir()).build();
-        objectLogBuffer = new ObjectLogBuffer(logBuffer, new ProtobufSerializer());
+        logBuffer = new Builder()
+                .basePath(TestUtil.tmpDir())
+                .addSerializer(new ProtobufSerializer())
+                .build();
         pageViewTail = new PageViewTail();
         visitTail = new VisitTail();
-        pageViewBufferTail = new ObjectLogBufferTail<>(objectLogBuffer, pageViewTail);
-        visitBufferTail = new ObjectLogBufferTail<>(objectLogBuffer, visitTail);
     }
 
     @After
     public void after() throws IOException {
-        objectLogBuffer.close();
+        logBuffer.close();
     }
 
     @Test
     public void test_write_read_different_types() throws IOException {
         // one type log
-        objectLogBuffer.write(p1);
-        objectLogBuffer.write(p2);
-        List<PageView> pageViews = objectLogBuffer.select(PageView.class, 0);
+        logBuffer.write(p1);
+        logBuffer.write(p2);
+        List<PageView> pageViews = logBuffer.select(PageView.class, 0);
 
         assertThat(pageViews.get(0).getMsg(), is(p1.getMsg()));
         assertThat(pageViews.get(0).getCode(), is(p1.getCode()));
@@ -65,9 +59,9 @@ public class ProtobufSerializerTest {
         assertThat(pageViews.get(1).getCode(), is(p2.getCode()));
 
         // another type log
-        objectLogBuffer.write(v1);
-        objectLogBuffer.write(v2);
-        List<Visit> visits = objectLogBuffer.select(Visit.class, 0);
+        logBuffer.write(v1);
+        logBuffer.write(v2);
+        List<Visit> visits = logBuffer.select(Visit.class, 0);
 
         assertThat(visits.get(0).getMsg(), is(v1.getMsg()));
         assertThat(visits.get(0).getCode(), is(v1.getCode()));
@@ -78,18 +72,18 @@ public class ProtobufSerializerTest {
     @Test
     public void test_write_tail_different_types() throws IOException {
 
-        objectLogBuffer.write(p1);
-        objectLogBuffer.write(v1);
-        objectLogBuffer.write(p2);
-        objectLogBuffer.write(v2);
+        logBuffer.write(p1);
+        logBuffer.write(v1);
+        logBuffer.write(p2);
+        logBuffer.write(v2);
 
-        visitBufferTail.forward();
+        logBuffer.forward(visitTail);
         assertThat(visitTail.logs.size(), is(2));
         assertThat(pageViewTail.logs.size(), is(0));
         assertThat(visitTail.logs.get(0).getMsg(), is(v1.getMsg()));
         assertThat(visitTail.logs.get(1).getMsg(), is(v2.getMsg()));
 
-        pageViewBufferTail.forward();
+        logBuffer.forward(pageViewTail);
         assertThat(visitTail.logs.size(), is(2));
         assertThat(pageViewTail.logs.size(), is(2));
         assertThat(pageViewTail.logs.get(0).getMsg(), is(p1.getMsg()));

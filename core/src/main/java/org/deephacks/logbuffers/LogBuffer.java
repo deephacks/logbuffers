@@ -11,8 +11,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A log buffer persist data items sequentially on local disk.
@@ -58,12 +60,17 @@ public final class LogBuffer {
     /** path where log buffer files are stored */
     private String basePath;
 
+    private ConcurrentHashMap<Tail<?>, LogBufferTail<?>> tails = new ConcurrentHashMap<>();
+
+    private Serializers serializers;
+
     private LogBuffer(Builder builder) throws IOException {
         this.basePath = builder.basePath.or(DEFAULT_BASE_PATH);
         this.index = new Index(basePath + "/writer");
         this.rollingChronicle = new RollingChronicle(basePath, builder.config);
         this.excerptAppender = rollingChronicle.createAppender();
         this.excerptTailer = rollingChronicle.createTailer();
+        this.serializers = builder.serializers;
     }
 
     synchronized ScheduledExecutorService getCachedExecutor() {
@@ -104,6 +111,33 @@ public final class LogBuffer {
             log.write(excerptAppender);
             return new Log(log, index.getAndIncrement());
         }
+    }
+
+    /**
+     * Write an object into the log buffer.
+     *
+     * @param object to be written.
+     * @return the unique index assigned to the object.
+     * @throws IOException
+     */
+    public long write(Object object) throws IOException {
+        return write(object, System.currentTimeMillis());
+    }
+
+    /**
+     * Write an object into the log buffer.
+     *
+     * @param object to be written
+     * @param timestamp of the object used by queries
+     * @return the unique index assigned to the object.
+     * @throws IOException
+     */
+    public long write(Object object, long timestamp) throws IOException {
+        Class<?> cls = object.getClass();
+        ObjectLogSerializer serializer = serializers.getSerializer(cls);
+        byte[] content = serializer.serialize(object);
+        Log log = new Log(serializers.getType(cls), content, timestamp, -1);
+        return write(log).getIndex();
     }
 
     /**
@@ -166,6 +200,44 @@ public final class LogBuffer {
         }
     }
 
+    /**
+     * Selects logs only of a specific type, all other types are filtered out.
+     *
+     * @see LogBuffer
+     */
+    public <T> List<T> select(Class<T> type, long fromIndex) throws IOException {
+        return select(type, fromIndex, getIndex());
+    }
+
+    /**
+     * Selects logs only of a specific type, all other types are filtered out.
+     *
+     * @see LogBuffer
+     */
+    public <T> List<T> select(Class<T> type, long fromIndex, long toIndex) throws IOException {
+        List<Log> logs = select(fromIndex, toIndex);
+        List<T> objects = new ArrayList<>();
+        for (Log log : logs) {
+            Object object = log;
+            if (log.getType() != Log.DEFAULT_TYPE) {
+                ObjectLogSerializer serializer = serializers.getSerializer(log.getType());
+                object = serializer.deserialize(log.getContent(), log.getType());
+            }
+            if (type.isAssignableFrom(object.getClass())) {
+                objects.add((T) object);
+            }
+        }
+        return objects;
+    }
+
+    public <T> void forward(Tail<T> tail) throws IOException {
+        LogBufferTail<T> tailBuffer = putIfAbsent(tail);
+        tailBuffer.forward();
+    }
+
+    /**
+     * @return directory where this log buffer is stored
+     */
     public String getBasePath() {
         return basePath;
     }
@@ -193,9 +265,41 @@ public final class LogBuffer {
         return index.getIndex();
     }
 
+    /**
+     * Cancel the periodic tail task.
+     *
+     * @param mayInterruptIfRunning if the thread executing this
+     * task should be interrupted; otherwise, in-progress tasks are allowed
+     * to complete
+     */
+    public void cancel(Tail<?> tail, boolean mayInterruptIfRunning) throws IOException {
+        LogBufferTail<?> logBufferTail = putIfAbsent(tail);
+        logBufferTail.cancel(mayInterruptIfRunning);
+    }
+
+    /**
+     * Forwards the log processing periodically by notifying the tail each round.
+     *
+     * @param delay the delay between the termination of one execution and the commencement of the next.
+     * @param unit time unit of the delay parameter.
+     */
+    public void forwardWithFixedDelay(Tail<?> tail, int delay, TimeUnit unit) throws IOException {
+        LogBufferTail<?> logBufferTail = putIfAbsent(tail);
+        logBufferTail.forwardWithFixedDelay(delay, unit);
+    }
+
+    private <T> LogBufferTail<T> putIfAbsent(Tail<?> tail) throws IOException {
+        LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail, new LogBufferTail<>(this, tail));
+        if (logBufferTail == null) {
+            logBufferTail = tails.get(tail);
+        }
+        return (LogBufferTail<T>) logBufferTail;
+    }
+
     public static class Builder {
         private ChronicleConfig config = ChronicleConfig.SMALL.clone();
         private Optional<String> basePath = Optional.absent();
+        private Serializers serializers = new Serializers();
 
         public Builder() {
             config.indexFileExcerpts(Short.MAX_VALUE);
@@ -203,6 +307,11 @@ public final class LogBuffer {
 
         public Builder basePath(String basePath) {
             this.basePath = Optional.fromNullable(basePath);
+            return this;
+        }
+
+        public Builder addSerializer(ObjectLogSerializer serializer) {
+            serializers.addSerializer(serializer);
             return this;
         }
 

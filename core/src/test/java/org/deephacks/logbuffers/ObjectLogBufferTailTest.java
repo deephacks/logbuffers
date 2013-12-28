@@ -21,9 +21,6 @@ import static org.junit.Assert.*;
 
 public class ObjectLogBufferTailTest {
     LogBuffer logBuffer;
-    ObjectLogBuffer objectLogBuffer;
-    ObjectLogBufferTail<A> bufferTailA;
-    ObjectLogBufferTail<B> bufferTailB;
 
     TailA tailA;
     TailB tailB;
@@ -39,11 +36,9 @@ public class ObjectLogBufferTailTest {
         tailA = new TailA();
         tailB = new TailB();
 
-        logBuffer = new Builder().basePath(TestUtil.tmpDir()).build();
-        objectLogBuffer = new ObjectLogBuffer(logBuffer, new JacksonSerializer());
-
-        bufferTailA = new ObjectLogBufferTail<>(objectLogBuffer, tailA);
-        bufferTailB = new ObjectLogBufferTail<>(objectLogBuffer, tailB);
+        logBuffer = new Builder().basePath(TestUtil.tmpDir())
+                .addSerializer(new JacksonSerializer())
+                .build();
     }
 
     @After
@@ -54,29 +49,29 @@ public class ObjectLogBufferTailTest {
     @Test
     public void test_manual_forward() throws IOException {
         // one log
-        objectLogBuffer.write(a1);
-        bufferTailA.forward();
+        logBuffer.write(a1);
+        logBuffer.forward(tailA);
         assertThat(tailA.logs.size(), is(1));
         assertThat(tailA.logs.get(0), is(a1));
         assertThat(tailB.logs.size(), is(0));
 
         // write another
-        objectLogBuffer.write(b1);
-        bufferTailB.forward();
-        bufferTailA.forward();
+        logBuffer.write(b1);
+        logBuffer.forward(tailB);
+        logBuffer.forward(tailA);
         assertThat(tailA.logs.size(), is(1));
         assertThat(tailA.logs.get(0), is(a1));
         assertThat(tailB.logs.size(), is(1));
         assertThat(tailB.logs.get(0), is(b1));
 
         // write multiple
-        objectLogBuffer.write(a1);
-        objectLogBuffer.write(b1);
-        objectLogBuffer.write(a2);
-        objectLogBuffer.write(b2);
+        logBuffer.write(a1);
+        logBuffer.write(b1);
+        logBuffer.write(a2);
+        logBuffer.write(b2);
 
         // only forward A
-        bufferTailA.forward();
+        logBuffer.forward(tailA);
         assertThat(tailA.logs.size(), is(3));
         assertThat(tailA.logs.get(1), is(a1));
         assertThat(tailA.logs.get(2), is(a2));
@@ -84,7 +79,7 @@ public class ObjectLogBufferTailTest {
         assertThat(tailB.logs.get(0), is(b1));
 
         // then B
-        bufferTailB.forward();
+        logBuffer.forward(tailB);
         assertThat(tailA.logs.size(), is(3));
         assertThat(tailB.logs.size(), is(3));
         assertThat(tailA.logs.get(1), is(a1));
@@ -98,18 +93,19 @@ public class ObjectLogBufferTailTest {
 
     @Test
     public void test_scheduled_forward() throws Exception {
-        bufferTailA.forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
-        bufferTailB.forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
+
+        logBuffer.forwardWithFixedDelay(tailA, 500, TimeUnit.MILLISECONDS);
+        logBuffer.forwardWithFixedDelay(tailB, 500, TimeUnit.MILLISECONDS);
 
         // one A log
-        objectLogBuffer.write(a1);
+        logBuffer.write(a1);
         Thread.sleep(600);
         assertThat(tailA.logs.size(), is(1));
         assertThat(tailA.logs.get(0), is(a1));
         assertThat(tailB.logs.size(), is(0));
 
         // one B log
-        objectLogBuffer.write(b1);
+        logBuffer.write(b1);
         Thread.sleep(600);
         assertThat(tailA.logs.size(), is(1));
         assertThat(tailA.logs.get(0), is(a1));
@@ -131,11 +127,10 @@ public class ObjectLogBufferTailTest {
             }
 
         };
-        ObjectLogBufferTail failBufferTail = new ObjectLogBufferTail<>(objectLogBuffer, failTail);
-        objectLogBuffer.write(a1);
-        objectLogBuffer.write(a2);
+        logBuffer.write(a1);
+        logBuffer.write(a2);
         try {
-            failBufferTail.forward();
+            logBuffer.forward(failTail);
         } catch (IllegalArgumentException e) {
             // ignore
         }
@@ -144,7 +139,7 @@ public class ObjectLogBufferTailTest {
         assertThat(result.get(1), is(a2));
 
         try {
-            failBufferTail.forward();
+            logBuffer.forward(failTail);
         } catch (IllegalArgumentException e) {
             // ignore
         }
@@ -154,6 +149,5 @@ public class ObjectLogBufferTailTest {
         assertThat(result.get(1), is(a2));
         assertThat(result.get(2), is(a1));
         assertThat(result.get(3), is(a2));
-
     }
 }

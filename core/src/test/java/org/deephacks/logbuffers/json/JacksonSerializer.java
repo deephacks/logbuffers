@@ -2,7 +2,6 @@ package org.deephacks.logbuffers.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
-import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -14,27 +13,24 @@ import java.io.IOException;
 import java.io.StringWriter;
 
 public class JacksonSerializer implements ObjectLogSerializer {
-    private BiMap<Long, Class<?>> classTypeMapping = HashBiMap.create();
+
+    private BiMap<Long, Class<?>> mapping = HashBiMap.create();
 
     private ObjectMapper mapper = new ObjectMapper();
 
     public JacksonSerializer() {
-        put(A.class, 123L);
-        put(B.class, 124L);
-    }
-
-    public void put(Class<?> cls, Long type) {
-        classTypeMapping.put(type, cls);
+        mapping.put(123L, A.class);
+        mapping.put(124L, B.class);
     }
 
     @Override
-    public Optional<Long> getType(Class<?> type) {
-        return Optional.fromNullable(classTypeMapping.inverse().get(type));
+    public BiMap<Long, Class<?>> getMapping() {
+        return mapping;
     }
 
     @Override
     public byte[] serialize(Object object) {
-        Long type = classTypeMapping.inverse().get(object.getClass());
+        Long type = mapping.inverse().get(object.getClass());
         Preconditions.checkNotNull(type, "No type mapped to class " + object.getClass());
         StringWriter writer = new StringWriter();
         try {
@@ -46,13 +42,10 @@ public class JacksonSerializer implements ObjectLogSerializer {
     }
 
     @Override
-    public <T> Optional<T> deserialize(byte[] log, long type) {
-        Class<T> cls = (Class<T>) classTypeMapping.get(type);
-        if (cls == null) {
-            return Optional.absent();
-        }
+    public Object deserialize(byte[] log, long type) {
+        Class<?> cls = mapping.get(type);
         try {
-            return Optional.fromNullable(mapper.readValue(log, cls));
+            return mapper.readValue(log, cls);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

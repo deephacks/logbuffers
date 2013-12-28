@@ -1,6 +1,11 @@
 package org.deephacks.logbuffers;
 
+import javax.lang.model.type.TypeVariable;
 import java.io.IOException;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -13,16 +18,25 @@ import java.util.concurrent.TimeUnit;
  *
  * This process consumes all logs of any type.
  */
-public class LogBufferTail {
+class LogBufferTail<T> {
     private LogBuffer logBuffer;
     private Index readIndex;
-    private Tail<Log> tail;
+    private Tail<T> tail;
     private ScheduledFuture<?> scheduledFuture;
+    private Class<T> type;
+    private String tailId;
 
-    public LogBufferTail(LogBuffer logBuffer, Tail<Log> tail) throws IOException {
+    LogBufferTail(LogBuffer logBuffer, Tail<T> tail) throws IOException {
         this.logBuffer = logBuffer;
-        this.readIndex = new Index(logBuffer.getBasePath() + "/" + tail.getClass().getName());
         this.tail = tail;
+        this.type = (Class<T>) getParameterizedType(tail.getClass(), Tail.class).get(0);
+    }
+
+    String getTailId() {
+        if (tailId == null) {
+            tailId = logBuffer.getBasePath() + "/" + tail.getClass().getName() + "@" + System.identityHashCode(tail);
+        }
+        return tailId;
     }
 
     /**
@@ -30,10 +44,13 @@ public class LogBufferTail {
      *
      * @throws IOException
      */
-    public void forward() throws IOException {
+    void forward() throws IOException {
+        if (readIndex == null) {
+            readIndex = new Index(getTailId());
+        }
         long currentWriteIndex = logBuffer.getIndex();
         long currentReadIndex = readIndex.getIndex();
-        List<Log> messages = logBuffer.select(currentReadIndex, currentWriteIndex);
+        List<T> messages = logBuffer.select(type, currentReadIndex, currentWriteIndex);
         tail.process(messages);
         // only write the read index if tail was successful
         readIndex.writeIndex(currentWriteIndex);
@@ -45,7 +62,7 @@ public class LogBufferTail {
      * @param delay the delay between the termination of one execution and the commencement of the next.
      * @param unit time unit of the delay parameter.
      */
-    public synchronized void forwardWithFixedDelay(int delay, TimeUnit unit) {
+    synchronized void forwardWithFixedDelay(int delay, TimeUnit unit) {
         if (scheduledFuture != null) {
             return;
         }
@@ -59,11 +76,12 @@ public class LogBufferTail {
      * task should be interrupted; otherwise, in-progress tasks are allowed
      * to complete
      */
-    public synchronized void cancel(boolean mayInterruptIfRunning) {
+    synchronized void cancel(boolean mayInterruptIfRunning) {
         if (scheduledFuture != null) {
             scheduledFuture.cancel(mayInterruptIfRunning);
         }
     }
+
 
     private static final class TailSchedule implements Runnable {
         private LogBufferTail tailer;
@@ -80,5 +98,41 @@ public class LogBufferTail {
                 // ignore for now
             }
         }
+    }
+
+    private List<Class<?>> getParameterizedType(final Class<?> ownerClass, Class<?> genericSuperClass) {
+        Type[] types = null;
+        if (genericSuperClass.isInterface()) {
+            types = ownerClass.getGenericInterfaces();
+        } else {
+            types = new Type[] { ownerClass.getGenericSuperclass() };
+        }
+
+        List<Class<?>> classes = new ArrayList<>();
+        for (Type type : types) {
+            if (!ParameterizedType.class.isAssignableFrom(type.getClass())) {
+                return new ArrayList<>();
+            }
+
+            ParameterizedType ptype = (ParameterizedType) type;
+            Type[] targs = ptype.getActualTypeArguments();
+
+            for (Type aType : targs) {
+
+                classes.add(extractClass(ownerClass, aType));
+            }
+        }
+        return classes;
+    }
+
+    private Class<?> extractClass(Class<?> ownerClass, Type arg) {
+        if (arg instanceof ParameterizedType) {
+            return extractClass(ownerClass, ((ParameterizedType) arg).getRawType());
+        } else if (arg instanceof GenericArrayType) {
+            throw new UnsupportedOperationException("GenericArray types are not supported.");
+        } else if (arg instanceof TypeVariable) {
+            throw new UnsupportedOperationException("GenericArray types are not supported.");
+        }
+        return (arg instanceof Class ? (Class<?>) arg : Object.class);
     }
 }
