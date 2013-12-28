@@ -26,7 +26,7 @@ public class ObjectLogBufferTail<T> {
 
     public ObjectLogBufferTail(ObjectLogBuffer logBuffer, Tail<T> tail) throws IOException {
         this.logBuffer = logBuffer;
-        this.readIndex = new Index(logBuffer.getBasePath() + "/" + tail.getName());
+        this.readIndex = new Index(logBuffer.getBasePath() + "/" + tail.getClass().getName());
         this.tail = tail;
         this.type = (Class<T>) getParameterizedType(tail.getClass(), Tail.class).get(0);
     }

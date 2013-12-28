@@ -20,7 +20,12 @@ public class JacksonSerializer implements ObjectLogSerializer {
     }
 
     @Override
-    public Log serialize(Object object) {
+    public Optional<Long> getType(Class<?> type) {
+        return Optional.fromNullable(classTypeMapping.inverse().get(type));
+    }
+
+    @Override
+    public byte[] serialize(Object object) {
         Long type = classTypeMapping.inverse().get(object.getClass());
         Preconditions.checkNotNull(type, "No type mapped to class " + object.getClass());
         StringWriter writer = new StringWriter();
@@ -29,18 +34,17 @@ public class JacksonSerializer implements ObjectLogSerializer {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        byte[] bytes = writer.toString().getBytes(Charsets.UTF_8);
-        return new Log(type, bytes);
+        return writer.toString().getBytes(Charsets.UTF_8);
     }
 
     @Override
-    public <T> Optional<T> deserialize(Log log, Class<T> type) {
-        Class<T> cls = (Class<T>) classTypeMapping.get(log.getType());
+    public <T> Optional<T> deserialize(byte[] log, long type) {
+        Class<T> cls = (Class<T>) classTypeMapping.get(type);
         if (cls == null) {
             return Optional.absent();
         }
         try {
-            return Optional.fromNullable(mapper.readValue(log.getContent(), cls));
+            return Optional.fromNullable(mapper.readValue(log, cls));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

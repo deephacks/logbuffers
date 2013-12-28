@@ -19,7 +19,7 @@ public class LogBufferTail {
 
     public LogBufferTail(LogBuffer logBuffer, Tail<Log> tail) throws IOException {
         this.logBuffer = logBuffer;
-        this.readIndex = new Index(logBuffer.getBasePath() + "/" + tail.getName());
+        this.readIndex = new Index(logBuffer.getBasePath() + "/" + tail.getClass().getName());
         this.tail = tail;
     }
 

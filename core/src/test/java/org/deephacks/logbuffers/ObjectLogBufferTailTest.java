@@ -128,10 +128,6 @@ public class ObjectLogBufferTailTest {
                 throw new IllegalArgumentException();
             }
 
-            @Override
-            public String getName() {
-                return "failTail";
-            }
         };
         ObjectLogBufferTail failBufferTail = new ObjectLogBufferTail<>(objectLogBuffer, failTail);
         objectLogBuffer.write(a1);

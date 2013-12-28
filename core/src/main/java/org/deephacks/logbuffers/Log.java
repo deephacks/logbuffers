@@ -51,6 +51,10 @@ public class Log {
         return timestamp;
     }
 
+    public long getIndex() {
+        return index;
+    }
+
     public int getLength() {
         // timestamp + type + size + content
         return 8 + 8 + 4 + content.length;

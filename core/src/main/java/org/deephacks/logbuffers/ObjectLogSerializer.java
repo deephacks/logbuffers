@@ -7,13 +7,21 @@ import com.google.common.base.Optional;
  */
 public interface ObjectLogSerializer {
     /**
+     * Get the unique number assigned for the specific class.
+     *
+     * @param type class of object to be serialized
+     * @return unique number or absent if no mapping exist.
+     */
+    public Optional<Long> getType(Class<?> type);
+
+    /**
      * Called when a new object is written to the object log buffer that
      * this serializer is attached to.
      *
      * @param object that is written.
      * @return a raw object log.
      */
-    public Log serialize(Object object);
+    public byte[] serialize(Object object);
 
     /**
      * Called when the object log buffer is queried with an index range that covers a specific log.
@@ -26,5 +34,6 @@ public interface ObjectLogSerializer {
      * @param <T> generic type.
      * @return Present if this serializer know how to serialize the log object.
      */
-    public <T> Optional<T> deserialize(Log log, Class<T> type);
+    public <T> Optional<T> deserialize(byte[] log, long type);
+
 }

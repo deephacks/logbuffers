@@ -56,11 +56,6 @@ public class TestUtil {
         public void process(List<A> logs) {
             this.logs.addAll(logs);
         }
-
-        @Override
-        public String getName() {
-            return "a";
-        }
     }
 
     public static class TailB implements Tail<B> {
@@ -71,11 +66,6 @@ public class TestUtil {
         public void process(List<B> logs) {
             this.logs.addAll(logs);
         }
-
-        @Override
-        public String getName() {
-            return "b";
-        }
     }
 
     public static class TailLog implements Tail<Log> {
@@ -85,11 +75,6 @@ public class TestUtil {
         @Override
         public void process(List<Log> logs) {
             this.logs.addAll(logs);
-        }
-
-        @Override
-        public String getName() {
-            return "log";
         }
     }
 
