@@ -17,8 +17,8 @@ public class LogBufferTailTest {
     LogBufferTail bufferTail;
     TailLog tail;
 
-    Log log1 = TestUtil.randomLog();
-    Log log2 = TestUtil.randomLog();
+    Log log1 = TestUtil.randomLog(1);
+    Log log2 = TestUtil.randomLog(2);
 
     @Before
     public void before() throws IOException {

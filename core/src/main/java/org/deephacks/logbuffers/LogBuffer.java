@@ -9,6 +9,7 @@ import net.openhft.chronicle.RollingChronicle;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -139,6 +140,37 @@ public class LogBuffer {
         }
     }
 
+    public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
+        long writeIndex = index.getIndex();
+        synchronized (readLock) {
+            LinkedList<Log> messages = new LinkedList<>();
+            long read = writeIndex - 1;
+            Log log = Log.read(excerptTailer, read);
+            while (log.getTimestamp() > toTimeMs) {
+                log = Log.read(excerptTailer, read);
+            }
+            while (log.getTimestamp() >= fromTimeMs) {
+                messages.addFirst(log);
+                log = Log.read(excerptTailer, --read);
+            }
+            return messages;
+        }
+    }
+
+    public List<Log> selectPeriod(long fromTimeMs) throws IOException {
+        long writeIndex = index.getIndex();
+        synchronized (readLock) {
+            LinkedList<Log> messages = new LinkedList<>();
+            long read = writeIndex - 1;
+            Log log = Log.read(excerptTailer, read);
+            while (log.getTimestamp() >= fromTimeMs) {
+                messages.addFirst(log);
+                log = Log.read(excerptTailer, --read);
+            }
+            return messages;
+        }
+    }
+
     public String getBasePath() {
         return basePath;
     }
@@ -152,6 +184,7 @@ public class LogBuffer {
         if (cachedExecutor != null) {
             cachedExecutor.shutdown();
         }
+        index.close();
         excerptAppender.close();
         excerptTailer.close();
         rollingChronicle.close();

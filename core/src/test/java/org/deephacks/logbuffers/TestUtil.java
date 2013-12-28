@@ -25,8 +25,8 @@ public class TestUtil {
         }
     }
 
-    public static Log randomLog() {
-        return new Log( UUID.randomUUID().toString().getBytes(Charsets.UTF_8));
+    public static Log randomLog(long timestamp) {
+        return new Log(Log.DEFAULT_TYPE, UUID.randomUUID().toString().getBytes(Charsets.UTF_8), timestamp);
     }
 
     public static A randomA() {
