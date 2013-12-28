@@ -1,8 +1,9 @@
 package org.deephacks.logbuffers;
 
 import org.deephacks.logbuffers.LogBuffer.Builder;
-import org.deephacks.logbuffers.TestUtil.A;
-import org.deephacks.logbuffers.TestUtil.B;
+import org.deephacks.logbuffers.util.TestUtil;
+import org.deephacks.logbuffers.util.TestUtil.A;
+import org.deephacks.logbuffers.util.TestUtil.B;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

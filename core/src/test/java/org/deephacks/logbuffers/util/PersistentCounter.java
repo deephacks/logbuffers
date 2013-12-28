@@ -1,4 +1,4 @@
-package org.deephacks.logbuffers;
+package org.deephacks.logbuffers.util;
 
 import net.openhft.chronicle.SingleMappedFileCache;
 

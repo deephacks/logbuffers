@@ -1,6 +1,9 @@
-package org.deephacks.logbuffers;
+package org.deephacks.logbuffers.util;
 
 import com.google.common.base.Charsets;
+import org.deephacks.logbuffers.Log;
+import org.deephacks.logbuffers.Tail;
+import org.deephacks.logbuffers.serializer.JacksonSerializer;
 
 import java.io.IOException;
 import java.nio.file.Files;

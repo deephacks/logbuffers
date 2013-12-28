@@ -59,7 +59,7 @@ public class LogBufferTail {
      * task should be interrupted; otherwise, in-progress tasks are allowed
      * to complete
      */
-    public void cancel(boolean mayInterruptIfRunning) {
+    public synchronized void cancel(boolean mayInterruptIfRunning) {
         if (scheduledFuture != null) {
             scheduledFuture.cancel(mayInterruptIfRunning);
         }

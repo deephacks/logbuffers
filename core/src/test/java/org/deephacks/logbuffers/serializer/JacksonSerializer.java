@@ -1,4 +1,4 @@
-package org.deephacks.logbuffers;
+package org.deephacks.logbuffers.serializer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
@@ -6,6 +6,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import org.deephacks.logbuffers.ObjectLogSerializer;
 
 import java.io.IOException;
 import java.io.StringWriter;

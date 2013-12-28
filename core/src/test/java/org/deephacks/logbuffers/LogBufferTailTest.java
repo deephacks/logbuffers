@@ -1,7 +1,8 @@
 package org.deephacks.logbuffers;
 
 import org.deephacks.logbuffers.LogBuffer.Builder;
-import org.deephacks.logbuffers.TestUtil.TailLog;
+import org.deephacks.logbuffers.util.TestUtil;
+import org.deephacks.logbuffers.util.TestUtil.TailLog;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
