@@ -62,13 +62,20 @@ reported separately.
 ObjectLogBuffer objectBuffer = new ObjectLogBuffer(buffer, new ProtobufLogSerializer());
 
 new ObjectLogBufferTail(objectBuffer, new PageViewTail()).forwardWithFixedDelay(500, TimeUnit.MILLISECONDS);
+new ObjectLogBufferTail(objectBuffer, new VisitTail()).forwardWithFixedDelay(1, TimeUnit.SECONDS);
 
 objectBuffer.write(new PageView("1"));
+objectBuffer.write(new Visit("1"));
 objectBuffer.write(new PageView("2"));
-objectBuffer.write(new PageView("3"));
 
 class PageViewTail implements Tail<PageView> {
   public void process(List<PageView> pageViews) { 
+    // group and report 
+  }
+}
+
+class VisitTail implements Tail<Visit> {
+  public void process(List<Visit> visits) { 
     // group and report 
   }
 }
