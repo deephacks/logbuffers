@@ -16,7 +16,7 @@ public interface ObjectLogSerializer {
 
     /**
      * Called when a new object is written to the object log buffer that
-     * this serializer is attached to.
+     * this json is attached to.
      *
      * @param object that is written.
      * @return a raw object log.
@@ -26,13 +26,13 @@ public interface ObjectLogSerializer {
     /**
      * Called when the object log buffer is queried with an index range that covers a specific log.
      *
-     * Note that logs not understood by this specific serializer might also be provided, hence the
+     * Note that logs not understood by this specific json might also be provided, hence the
      * Optional return object.
      *
      * @param log that was queried.
      * @param type object type.
      * @param <T> generic type.
-     * @return Present if this serializer know how to serialize the log object.
+     * @return Present if this json know how to serialize the log object.
      */
     public <T> Optional<T> deserialize(byte[] log, long type);
 

@@ -1,4 +1,4 @@
-package org.deephacks.logbuffers.serializer;
+package org.deephacks.logbuffers.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;

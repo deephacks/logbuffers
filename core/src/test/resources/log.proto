@@ -1,0 +1,16 @@
+package logbuffer;
+
+option java_package = "org.deephacks.logbuffers.protobuf";
+option java_outer_classname = "ProtoLog";
+
+message PageView {
+  optional uint32 protoType = 1000;
+  required string msg = 1;
+  required uint32 code = 2;
+}
+
+message Visit {
+  optional uint32 protoType = 1001;
+  required string msg = 1;
+  required uint32 code = 2;
+}

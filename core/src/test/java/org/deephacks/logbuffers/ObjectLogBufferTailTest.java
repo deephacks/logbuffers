@@ -39,7 +39,7 @@ public class ObjectLogBufferTailTest {
         tailB = new TailB();
 
         logBuffer = new Builder().basePath(TestUtil.tmpDir()).build();
-        objectLogBuffer = new ObjectLogBuffer(logBuffer, TestUtil.getSerializer());
+        objectLogBuffer = new ObjectLogBuffer(logBuffer, TestUtil.getJacksonSerializer());
 
         bufferTailA = new ObjectLogBufferTail<>(objectLogBuffer, tailA);
         bufferTailB = new ObjectLogBufferTail<>(objectLogBuffer, tailB);

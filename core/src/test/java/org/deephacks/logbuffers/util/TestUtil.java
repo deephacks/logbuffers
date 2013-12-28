@@ -3,7 +3,7 @@ package org.deephacks.logbuffers.util;
 import com.google.common.base.Charsets;
 import org.deephacks.logbuffers.Log;
 import org.deephacks.logbuffers.Tail;
-import org.deephacks.logbuffers.serializer.JacksonSerializer;
+import org.deephacks.logbuffers.json.JacksonSerializer;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -44,7 +44,7 @@ public class TestUtil {
         return randomStrings.get(Math.abs(new Random().nextInt()) % randomStrings.size());
     }
 
-    public static JacksonSerializer getSerializer() {
+    public static JacksonSerializer getJacksonSerializer() {
         JacksonSerializer serializer = new JacksonSerializer();
         serializer.put(A.class, 123L);
         serializer.put(B.class, 124L);

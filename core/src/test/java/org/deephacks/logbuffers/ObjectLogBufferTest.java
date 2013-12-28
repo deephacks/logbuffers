@@ -27,7 +27,7 @@ public class ObjectLogBufferTest {
     @Before
     public void before() throws IOException {
         logBuffer = new Builder().basePath(TestUtil.tmpDir()).build();
-        objectLogBuffer = new ObjectLogBuffer(logBuffer, TestUtil.getSerializer());
+        objectLogBuffer = new ObjectLogBuffer(logBuffer, TestUtil.getJacksonSerializer());
     }
 
     @After
