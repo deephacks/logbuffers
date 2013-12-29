@@ -59,7 +59,33 @@ public class LogBufferTest {
     log4 = logBuffer.write(log4);
     log5 = logBuffer.write(log5);
 
-    List<Log> select = logBuffer.selectPeriod(3, 5);
+    List<Log> select = logBuffer.selectPeriod(0, 0);
+    assertThat(select.size(), is(0));
+
+    select = logBuffer.selectPeriod(1, 1);
+    assertThat(select.size(), is(1));
+    assertThat(select.get(0), is(log1));
+
+    select = logBuffer.selectPeriod(2, 2);
+    assertThat(select.size(), is(1));
+    assertThat(select.get(0), is(log2));
+
+    select = logBuffer.selectPeriod(3, 3);
+    assertThat(select.size(), is(1));
+    assertThat(select.get(0), is(log3));
+
+    select = logBuffer.selectPeriod(4, 4);
+    assertThat(select.size(), is(1));
+    assertThat(select.get(0), is(log4));
+
+    select = logBuffer.selectPeriod(5, 5);
+    assertThat(select.size(), is(1));
+    assertThat(select.get(0), is(log5));
+
+    select = logBuffer.selectPeriod(6, System.currentTimeMillis());
+    assertThat(select.size(), is(0));
+
+    select = logBuffer.selectPeriod(3, 5);
     assertThat(select.size(), is(3));
     assertThat(select.get(0), is(log3));
     assertThat(select.get(1), is(log4));
