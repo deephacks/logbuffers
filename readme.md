@@ -1,7 +1,7 @@
 ### logbuffers - fast persistent buffers for streaming data. 
 
 
-The purpose of logbuffers is to provide simple, reliable, low latency persistence for high throughput data feeds. 
+The purpose of logbuffers is to provide simple, reliable, low latency persistence buffers for high throughput data feeds. 
 
 Every buffer consist of an ordered, immutable sequence of logs that is continually appended to — much like a commit log.
 Every log is given a sequential index number (position/offset) that uniquely identifies each log within the buffer.
