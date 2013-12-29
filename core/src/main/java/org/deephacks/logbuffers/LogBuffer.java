@@ -1,6 +1,7 @@
 package org.deephacks.logbuffers;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import net.openhft.chronicle.ChronicleConfig;
 import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.ExcerptTailer;
@@ -143,6 +144,7 @@ public final class LogBuffer {
    * @throws IOException
    */
   public List<Log> select(long fromIndex, long toIndex) throws IOException {
+    Preconditions.checkArgument(fromIndex <= toIndex, "from must be less than to");
     synchronized (readLock) {
       List<Log> messages = new ArrayList<>();
       long maxIndex = writeIndex.getIndex();
@@ -167,6 +169,7 @@ public final class LogBuffer {
    * @throws IOException
    */
   public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
+    Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     long writeIndex = this.writeIndex.getIndex();
     synchronized (readLock) {
       LinkedList<Log> messages = new LinkedList<>();

@@ -107,9 +107,9 @@ public class ObjectLogBufferTest {
     long t5 = timestamp();
 
     // check select outside index
-    List<A> a = logBuffer.select(A.class, 100, 0);
+    List<A> a = logBuffer.select(A.class, 100, 100);
     assertThat(a.size(), is(0));
-    List<B> b = logBuffer.select(B.class, 100, 0);
+    List<B> b = logBuffer.select(B.class, 100, 1000);
     assertThat(a.size(), is(0));
     assertThat(b.size(), is(0));
 
