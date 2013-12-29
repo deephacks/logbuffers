@@ -14,32 +14,32 @@ import com.google.common.collect.BiMap;
  */
 public interface ObjectLogSerializer {
 
-    /**
-     * Get the unique number mapped to a specific class.
-     *
-     * @return unique number or absent if no mapping exist.
-     */
-    public BiMap<Long, Class<?>> getMapping();
+  /**
+   * Get the unique number mapped to a specific class.
+   *
+   * @return unique number or absent if no mapping exist.
+   */
+  public BiMap<Long, Class<?>> getMapping();
 
-    /**
-     * Called when a new object is written to the object log buffer that
-     * this json is attached to.
-     *
-     * @param object that is written.
-     * @return a raw object log.
-     */
-    public byte[] serialize(Object object);
+  /**
+   * Called when a new object is written to the object log buffer that
+   * this json is attached to.
+   *
+   * @param object that is written.
+   * @return a raw object log.
+   */
+  public byte[] serialize(Object object);
 
-    /**
-     * Called when the object log buffer is queried with an index range that covers a specific log.
-     *
-     * Note that logs not understood by this specific json might also be provided, hence the
-     * Optional return object.
-     *
-     * @param log that was queried.
-     * @param type the unique number that map the binary data to a specific class.
-     * @return Present if this json know how to serialize the log object.
-     */
-    public Object deserialize(byte[] log, long type);
+  /**
+   * Called when the object log buffer is queried with an index range that covers a specific log.
+   *
+   * Note that logs not understood by this specific json might also be provided, hence the
+   * Optional return object.
+   *
+   * @param log that was queried.
+   * @param type the unique number that map the binary data to a specific class.
+   * @return Present if this json know how to serialize the log object.
+   */
+  public Object deserialize(byte[] log, long type);
 
 }

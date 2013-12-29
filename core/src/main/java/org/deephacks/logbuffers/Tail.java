@@ -10,15 +10,15 @@ import java.util.List;
  * @param <T> log type of interest.
  */
 public interface Tail<T> {
-    /**
-     * Process a set of logs. Logs are considered processed after this
-     * method returns without throwing an exception.
-     *
-     * Log processing will retry indefinitely until does not throw a runtime
-     * exception anymore, at which point the logs are considered processed and
-     * the index will advance.
-     *
-     * @param logs to be processed.
-     */
-    public void process(List<T> logs);
+  /**
+   * Process a set of logs. Logs are considered processed after this
+   * method returns without throwing an exception.
+   *
+   * Log processing will retry indefinitely until does not throw a runtime
+   * exception anymore, at which point the logs are considered processed and
+   * the index will advance.
+   *
+   * @param logs to be processed.
+   */
+  public void process(List<T> logs);
 }

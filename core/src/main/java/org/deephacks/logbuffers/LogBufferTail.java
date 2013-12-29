@@ -19,136 +19,136 @@ import java.util.concurrent.TimeUnit;
  * This process consumes all logs of any type.
  */
 class LogBufferTail<T> {
-    private LogBuffer logBuffer;
-    private Index readIndex;
-    private Tail<T> tail;
-    private ScheduledFuture<?> scheduledFuture;
-    private Class<T> type;
-    private String tailId;
+  private LogBuffer logBuffer;
+  private Index readIndex;
+  private Tail<T> tail;
+  private ScheduledFuture<?> scheduledFuture;
+  private Class<T> type;
+  private String tailId;
 
-    LogBufferTail(LogBuffer logBuffer, Tail<T> tail) throws IOException {
-        this.logBuffer = logBuffer;
-        this.tail = tail;
-        this.type = (Class<T>) getParameterizedType(tail.getClass(), Tail.class).get(0);
+  LogBufferTail(LogBuffer logBuffer, Tail<T> tail) throws IOException {
+    this.logBuffer = logBuffer;
+    this.tail = tail;
+    this.type = (Class<T>) getParameterizedType(tail.getClass(), Tail.class).get(0);
+  }
+
+  String getTailId() {
+    if (tailId == null) {
+      tailId = logBuffer.getBasePath() + "/" + tail.getClass().getName();
     }
+    return tailId;
+  }
 
-    String getTailId() {
-        if (tailId == null) {
-            tailId = logBuffer.getBasePath() + "/" + tail.getClass().getName();
-        }
-        return tailId;
+  /**
+   * Push the index forward if logs are processed successfully by the tail.
+   *
+   * @throws IOException
+   */
+  void forward() throws IOException {
+    if (readIndex == null) {
+      readIndex = new Index(getTailId());
     }
-
     /**
-     * Push the index forward if logs are processed successfully by the tail.
-     *
-     * @throws IOException
+     * Fix paging mechanism to handle when read and write indexes are too far apart!
      */
-    void forward() throws IOException {
-        if (readIndex == null) {
-            readIndex = new Index(getTailId());
-        }
-        /**
-         * Fix paging mechanism to handle when read and write indexes are too far apart!
-         */
-        long currentWriteIndex = logBuffer.getWriteIndex();
-        long currentReadIndex = readIndex.getIndex();
-        List<T> messages = logBuffer.select(type, currentReadIndex, currentWriteIndex);
-        tail.process(messages);
-        // only write the read index if tail was successful
-        readIndex.writeIndex(currentWriteIndex);
+    long currentWriteIndex = logBuffer.getWriteIndex();
+    long currentReadIndex = readIndex.getIndex();
+    List<T> messages = logBuffer.select(type, currentReadIndex, currentWriteIndex);
+    tail.process(messages);
+    // only write the read index if tail was successful
+    readIndex.writeIndex(currentWriteIndex);
+  }
+
+  /**
+   * Forwards the log processing periodically by notifying the tail each round.
+   *
+   * @param delay the delay between the termination of one execution and the commencement of the next.
+   * @param unit time unit of the delay parameter.
+   */
+  synchronized void forwardWithFixedDelay(int delay, TimeUnit unit) {
+    if (scheduledFuture != null) {
+      return;
+    }
+    scheduledFuture = this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this), 0, delay, unit);
+  }
+
+  /**
+   * Cancel the periodic tail task.
+   *
+   * @param mayInterruptIfRunning if the thread executing this
+   * task should be interrupted; otherwise, in-progress tasks are allowed
+   * to complete
+   */
+  synchronized void cancel(boolean mayInterruptIfRunning) {
+    if (scheduledFuture != null) {
+      scheduledFuture.cancel(mayInterruptIfRunning);
+    }
+  }
+
+  /**
+   * @return the current read index.
+   */
+  synchronized long getReadIndex() throws IOException {
+    return readIndex.getIndex();
+  }
+
+  /**
+   * @throws IOException
+   */
+  public void close() throws IOException {
+    readIndex.close();
+  }
+
+  private static final class TailSchedule implements Runnable {
+    private LogBufferTail tailer;
+
+    public TailSchedule(LogBufferTail tailer) {
+      this.tailer = tailer;
     }
 
-    /**
-     * Forwards the log processing periodically by notifying the tail each round.
-     *
-     * @param delay the delay between the termination of one execution and the commencement of the next.
-     * @param unit time unit of the delay parameter.
-     */
-    synchronized void forwardWithFixedDelay(int delay, TimeUnit unit) {
-        if (scheduledFuture != null) {
-            return;
-        }
-        scheduledFuture = this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this), 0, delay, unit);
+    @Override
+    public void run() {
+      try {
+        tailer.forward();
+      } catch (Exception e) {
+        // ignore for now
+      }
+    }
+  }
+
+  private List<Class<?>> getParameterizedType(final Class<?> ownerClass, Class<?> genericSuperClass) {
+    Type[] types = null;
+    if (genericSuperClass.isInterface()) {
+      types = ownerClass.getGenericInterfaces();
+    } else {
+      types = new Type[]{ownerClass.getGenericSuperclass()};
     }
 
-    /**
-     * Cancel the periodic tail task.
-     *
-     * @param mayInterruptIfRunning if the thread executing this
-     * task should be interrupted; otherwise, in-progress tasks are allowed
-     * to complete
-     */
-    synchronized void cancel(boolean mayInterruptIfRunning) {
-        if (scheduledFuture != null) {
-            scheduledFuture.cancel(mayInterruptIfRunning);
-        }
+    List<Class<?>> classes = new ArrayList<>();
+    for (Type type : types) {
+      if (!ParameterizedType.class.isAssignableFrom(type.getClass())) {
+        return new ArrayList<>();
+      }
+
+      ParameterizedType ptype = (ParameterizedType) type;
+      Type[] targs = ptype.getActualTypeArguments();
+
+      for (Type aType : targs) {
+
+        classes.add(extractClass(ownerClass, aType));
+      }
     }
+    return classes;
+  }
 
-    /**
-     * @return the current read index.
-     */
-    synchronized long getReadIndex() throws IOException {
-        return readIndex.getIndex();
+  private Class<?> extractClass(Class<?> ownerClass, Type arg) {
+    if (arg instanceof ParameterizedType) {
+      return extractClass(ownerClass, ((ParameterizedType) arg).getRawType());
+    } else if (arg instanceof GenericArrayType) {
+      throw new UnsupportedOperationException("GenericArray types are not supported.");
+    } else if (arg instanceof TypeVariable) {
+      throw new UnsupportedOperationException("GenericArray types are not supported.");
     }
-
-    /**
-     * @throws IOException
-     */
-    public void close() throws IOException {
-        readIndex.close();
-    }
-
-    private static final class TailSchedule implements Runnable {
-        private LogBufferTail tailer;
-
-        public TailSchedule(LogBufferTail tailer) {
-            this.tailer = tailer;
-        }
-
-        @Override
-        public void run() {
-            try {
-                tailer.forward();
-            } catch (Exception e) {
-                // ignore for now
-            }
-        }
-    }
-
-    private List<Class<?>> getParameterizedType(final Class<?> ownerClass, Class<?> genericSuperClass) {
-        Type[] types = null;
-        if (genericSuperClass.isInterface()) {
-            types = ownerClass.getGenericInterfaces();
-        } else {
-            types = new Type[] { ownerClass.getGenericSuperclass() };
-        }
-
-        List<Class<?>> classes = new ArrayList<>();
-        for (Type type : types) {
-            if (!ParameterizedType.class.isAssignableFrom(type.getClass())) {
-                return new ArrayList<>();
-            }
-
-            ParameterizedType ptype = (ParameterizedType) type;
-            Type[] targs = ptype.getActualTypeArguments();
-
-            for (Type aType : targs) {
-
-                classes.add(extractClass(ownerClass, aType));
-            }
-        }
-        return classes;
-    }
-
-    private Class<?> extractClass(Class<?> ownerClass, Type arg) {
-        if (arg instanceof ParameterizedType) {
-            return extractClass(ownerClass, ((ParameterizedType) arg).getRawType());
-        } else if (arg instanceof GenericArrayType) {
-            throw new UnsupportedOperationException("GenericArray types are not supported.");
-        } else if (arg instanceof TypeVariable) {
-            throw new UnsupportedOperationException("GenericArray types are not supported.");
-        }
-        return (arg instanceof Class ? (Class<?>) arg : Object.class);
-    }
+    return (arg instanceof Class ? (Class<?>) arg : Object.class);
+  }
 }

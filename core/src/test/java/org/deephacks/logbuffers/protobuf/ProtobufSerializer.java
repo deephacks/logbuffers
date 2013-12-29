@@ -12,31 +12,31 @@ import java.lang.reflect.Method;
 
 public class ProtobufSerializer implements ObjectLogSerializer {
 
-    private BiMap<Long, Class<?>> mapping = HashBiMap.create();
+  private BiMap<Long, Class<?>> mapping = HashBiMap.create();
 
-    public ProtobufSerializer() {
-        mapping.put(123L, PageView.class);
-        mapping.put(124L, Visit.class);
-    }
+  public ProtobufSerializer() {
+    mapping.put(123L, PageView.class);
+    mapping.put(124L, Visit.class);
+  }
 
-    @Override
-    public BiMap<Long, Class<?>> getMapping() {
-        return mapping;
-    }
+  @Override
+  public BiMap<Long, Class<?>> getMapping() {
+    return mapping;
+  }
 
-    @Override
-    public byte[] serialize(Object proto) {
-        Message msg = (Message) proto;
-        return msg.toByteArray();
-    }
+  @Override
+  public byte[] serialize(Object proto) {
+    Message msg = (Message) proto;
+    return msg.toByteArray();
+  }
 
-    @Override
-    public Object deserialize(byte[] log, long type) {
-        try {
-            Method parseFrom = mapping.get(type).getMethod("parseFrom", byte[].class);
-            return parseFrom.invoke(null, log);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+  @Override
+  public Object deserialize(byte[] log, long type) {
+    try {
+      Method parseFrom = mapping.get(type).getMethod("parseFrom", byte[].class);
+      return parseFrom.invoke(null, log);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
 }
