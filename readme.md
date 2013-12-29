@@ -19,7 +19,7 @@ Normally a consumer will advance its index linearly as it reads logs, but can in
 
 ### Reliability
 
-- Buffers should not loose any data if the JVM crash and core dumps.
+- Buffers do not loose data if the JVM crash and core dumps.
 - Logs may be lost during power failures or a total OS crash.
 - Buffers can be configured for synchronous writes and survive power failures.
 
