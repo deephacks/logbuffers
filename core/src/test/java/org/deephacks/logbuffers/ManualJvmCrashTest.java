@@ -1,5 +1,6 @@
 package org.deephacks.logbuffers;
 
+import com.google.common.primitives.Longs;
 import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.deephacks.logbuffers.util.JvmCrasher;
 import org.deephacks.logbuffers.util.PersistentCounter;
@@ -52,7 +53,7 @@ public class ManualJvmCrashTest {
     public void run() {
       while (true) {
         try {
-          buffer.write(counter.getAndIncrement() + "");
+          buffer.write(Longs.toByteArray(counter.getAndIncrement()));
           Thread.sleep(1);
         } catch (Exception e) {
 
