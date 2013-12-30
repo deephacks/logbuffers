@@ -5,6 +5,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Specialized tail that provide logs iteratively in chunks according to a certain period of time.
+ */
 class LogBufferTailChunk<T> extends LogBufferTail<T> {
   private long chunkMs;
   public static SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss:SSS");
@@ -35,21 +38,35 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     }
     Logs<T> logs = logBuffer.selectPeriod(type, fixedFrom, fixedTo);
     System.out.println(format.format(new Date(fixedFrom)) + " " + format.format(new Date(fixedTo)));
+
+    // don't call tail if there are no logs
     if (logs.size() < 0) {
       return new ForwardResult();
     }
+    // prepare the next read index BEFORE we hand over logs to tail
+    Log logRead = getLastLog(logs);
+    long lastReadIndex = logRead.getIndex();
+    // prepare result
+    ForwardResult result = new ForwardResult();
+    if (logRead.getTimestamp() < lastWrite.getTimestamp()) {
+      // alter the result to indicate that there are already more logs
+      // to process after this round have been executed. Hence we can
+      // act quickly and process these as fast as possible, if needed.
+      result = new ForwardResult(false);
+    }
+    // ready to process logs. ignore any exceptions since the LogBuffer
+    // will take care of them and retry automatically for us next round.
+    // haven't persistent anything to disk yet so tail is fine if it happens
     tail.process(logs);
+    // only write the read lastReadIndex if tail was successful
+    writeReadIndex(lastReadIndex + 1);
+    return result;
+  }
+
+  private Log getLastLog(Logs<T> logs) {
     List<T> objects = logs.get();
     T last = objects.get(objects.size() - 1);
-    // only write the read index if tail was successful
-    Log logRead = logs.get(last);
-    long index = logRead.getIndex();
-    writeReadIndex(index + 1);
-
-    if (logRead.getTimestamp() < lastWrite.getTimestamp()) {
-      return new ForwardResult(false);
-    }
-    return new ForwardResult();
+    return logs.get(last);
   }
 
   public long fix(long timeMs) {

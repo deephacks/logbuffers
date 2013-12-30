@@ -9,8 +9,8 @@ package org.deephacks.logbuffers;
  */
 public interface Tail<T> {
   /**
-   * Process a set of logs. Logs are considered processed after this
-   * method returns without throwing an exception.
+   * Process a set of logs. This is an all or nothing operation! Logs are considered
+   * processed after this method returns without throwing an exception.
    *
    * Log processing will retry indefinitely until does not throw a runtime
    * exception anymore, at which point the logs are considered processed and
