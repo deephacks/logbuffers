@@ -19,7 +19,11 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
 
   @Override
   ForwardResult forward() throws IOException {
+    // get the index that was written by previous tail acknowledgement
     long currentReadIndex = getReadIndex();
+
+    // fetch the last written log so we can determine how far ahead
+    // the writer index is so we can speed up if the tail backlog is too big.
     List<Log> writes = logBuffer.select(logBuffer.getWriteIndex() - 1);
     if (writes.isEmpty()) {
       return new ForwardResult();
@@ -27,12 +31,14 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     Log lastWrite = writes.get(0);
 
     List<Log> current = logBuffer.select(currentReadIndex);
-    if (current.size() == 0) {
+    if (current.isEmpty()) {
       return new ForwardResult();
     }
+    // pick the next log by trying to select fixed chunk period
     long fixedFrom = fix(current.get(0).getTimestamp());
     long fixedTo = fixedFrom + chunkMs - 1;
-    // do not process ahead of time.
+    // do not process ahead of time, meaning tail will not try process
+    // logs until the chunkMs have passed since the present.
     if (fixedTo > System.currentTimeMillis()) {
       return new ForwardResult();
     }
@@ -58,7 +64,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     // will take care of them and retry automatically for us next round.
     // haven't persistent anything to disk yet so tail is fine if it happens
     tail.process(logs);
-    // only write the read lastReadIndex if tail was successful
+    // only write/persist last read index if tail was successful
     writeReadIndex(lastReadIndex + 1);
     return result;
   }
@@ -69,7 +75,10 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     return logs.get(last);
   }
 
-  public long fix(long timeMs) {
+  /**
+   * Calculate a fixed period of time aligned with the chunk length.
+   */
+  private long fix(long timeMs) {
     return timeMs - (timeMs % chunkMs);
   }
 }
