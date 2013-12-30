@@ -235,7 +235,9 @@ public final class LogBuffer {
           objects.add((T) serializer.deserialize(log.getContent(), log.getType()));
         }
       } else {
-        objects.add((T) log);
+        if (type.isAssignableFrom(Log.class)) {
+          objects.add((T) log);
+        }
       }
     }
     return objects;
