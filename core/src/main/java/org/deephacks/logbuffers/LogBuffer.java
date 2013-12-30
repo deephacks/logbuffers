@@ -48,10 +48,10 @@ public final class LogBuffer {
   private RollingChronicle rollingChronicle;
 
   /** log writer */
-  private ExcerptAppender excerptAppender;
+  private final ExcerptAppender excerptAppender;
 
   /** log reader */
-  private ExcerptTailer excerptTailer;
+  private final ExcerptTailer excerptTailer;
 
   /** lock used when reading */
   private final Object readLock = new Object();
@@ -99,7 +99,10 @@ public final class LogBuffer {
    * @throws IOException
    */
   Log write(Log log) throws IOException {
-    synchronized (writeLock) {
+    // single writer is required in order append to file since there is
+    // only one file written to at a given time (also generating unique
+    // and sequential indexes).
+    synchronized (excerptAppender) {
       log.write(excerptAppender);
       return new Log(log, writeIndex.getAndIncrement());
     }
@@ -134,7 +137,9 @@ public final class LogBuffer {
   }
 
   Optional<Log> get(long index) throws IOException {
-    return Log.read(excerptTailer, index);
+    synchronized (excerptTailer) {
+      return Log.read(excerptTailer, index);
+    }
   }
 
   Optional<Log> getLatestWrite() throws IOException {
@@ -182,9 +187,9 @@ public final class LogBuffer {
   public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     long writeIndex = this.writeIndex.getIndex();
+    LinkedList<Log> messages = new LinkedList<>();
+    long read = writeIndex - 1;
     synchronized (readLock) {
-      LinkedList<Log> messages = new LinkedList<>();
-      long read = writeIndex - 1;
       for (long i = read; i > -1; i--) {
         Optional<Log> optional = get(i);
         if (!optional.isPresent()) {
@@ -277,18 +282,20 @@ public final class LogBuffer {
    * @throws IOException
    */
   public synchronized void close() throws IOException {
-    excerptAppender.close();
-    writeIndex.close();
-    for (Class<?> cls : tails.keySet()) {
-      LogBufferTail<?> logBufferTail = tails.remove(cls);
-      logBufferTail.cancel(true);
-      logBufferTail.close();
+    synchronized (excerptAppender) {
+      excerptAppender.close();
+      writeIndex.close();
+      for (Class<?> cls : tails.keySet()) {
+        LogBufferTail<?> logBufferTail = tails.remove(cls);
+        logBufferTail.cancel(true);
+        logBufferTail.close();
+      }
+      if (cachedExecutor != null) {
+        cachedExecutor.shutdown();
+      }
+      excerptTailer.close();
+      rollingChronicle.close();
     }
-    if (cachedExecutor != null) {
-      cachedExecutor.shutdown();
-    }
-    excerptTailer.close();
-    rollingChronicle.close();
   }
 
   /**

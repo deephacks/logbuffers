@@ -22,7 +22,7 @@ class LogBufferTail<T> {
   protected LogBuffer logBuffer;
   protected Class<T> type;
   protected Tail<T> tail;
-  private Index readIndex;
+  private final Index readIndex;
   private ScheduledFuture<?> scheduledFuture;
   private String tailId;
 
@@ -30,6 +30,7 @@ class LogBufferTail<T> {
     this.logBuffer = logBuffer;
     this.tail = tail;
     this.type = (Class<T>) getParameterizedType(tail.getClass(), Tail.class).get(0);
+    this.readIndex = new Index(getTailId());
   }
 
   String getTailId() {
@@ -58,7 +59,9 @@ class LogBufferTail<T> {
   }
 
   protected void writeReadIndex(long index) throws IOException {
-    readIndex.writeIndex(index);
+    synchronized (readIndex) {
+      readIndex.writeIndex(index);
+    }
   }
 
   /**
@@ -95,9 +98,6 @@ class LogBufferTail<T> {
    * @return the current read index.
    */
   synchronized long getReadIndex() throws IOException {
-    if (readIndex == null) {
-      readIndex = new Index(getTailId());
-    }
     return readIndex.getIndex();
   }
 
@@ -105,7 +105,9 @@ class LogBufferTail<T> {
    * @throws IOException
    */
   public void close() throws IOException {
-    readIndex.close();
+    synchronized (readIndex) {
+      readIndex.close();
+    }
   }
 
 
