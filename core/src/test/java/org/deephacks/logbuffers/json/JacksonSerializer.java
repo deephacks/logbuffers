@@ -6,11 +6,13 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import org.deephacks.logbuffers.ObjectLogSerializer;
-import org.deephacks.logbuffers.LogUtil.A;
-import org.deephacks.logbuffers.LogUtil.B;
+import org.deephacks.logbuffers.Tail;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class JacksonSerializer implements ObjectLogSerializer {
 
@@ -50,4 +52,136 @@ public class JacksonSerializer implements ObjectLogSerializer {
       throw new RuntimeException(e);
     }
   }
+
+
+
+  public static class A {
+    private String str;
+    private Long val;
+
+    private A() {
+
+    }
+
+    public A(String str, Long val) {
+      this.str = str;
+      this.val = val;
+    }
+
+    public String getStr() {
+      return str;
+    }
+
+    public Long getVal() {
+      return val;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      A a = (A) o;
+
+      if (str != null ? !str.equals(a.str) : a.str != null) return false;
+      if (val != null ? !val.equals(a.val) : a.val != null) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = str != null ? str.hashCode() : 0;
+      result = 31 * result + (val != null ? val.hashCode() : 0);
+      return result;
+    }
+
+    @Override
+    public String toString() {
+      return "A{" +
+              "str='" + str + '\'' +
+              ", val=" + val +
+              '}';
+    }
+  }
+
+
+  public static class B {
+    private String str;
+    private Long val;
+
+    private B() {
+
+    }
+
+    public B(String str, Long val) {
+      this.str = str;
+      this.val = val;
+    }
+
+    public String getStr() {
+      return str;
+    }
+
+    public Long getVal() {
+      return val;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      B b = (B) o;
+
+      if (str != null ? !str.equals(b.str) : b.str != null) return false;
+      if (val != null ? !val.equals(b.val) : b.val != null) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = str != null ? str.hashCode() : 0;
+      result = 31 * result + (val != null ? val.hashCode() : 0);
+      return result;
+    }
+
+    @Override
+    public String toString() {
+      return "B{" +
+              "str='" + str + '\'' +
+              ", val=" + val +
+              '}';
+    }
+  }
+
+  public static class TailA implements Tail<A> {
+
+    public List<A> logs = new ArrayList<>();
+
+    @Override
+    public void process(List<A> logs) {
+      this.logs.addAll(logs);
+    }
+  }
+
+  public static class TailB implements Tail<B> {
+
+    public List<B> logs = new ArrayList<>();
+
+    @Override
+    public void process(List<B> logs) {
+      this.logs.addAll(logs);
+    }
+  }
+
+  public static A randomA(long val) {
+    return new A(UUID.randomUUID().toString(), val);
+  }
+
+  public static B randomB(long val) {
+    return new B(UUID.randomUUID().toString(), val);
+  }
+
 }

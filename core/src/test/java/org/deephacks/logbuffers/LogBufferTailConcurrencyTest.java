@@ -2,7 +2,7 @@ package org.deephacks.logbuffers;
 
 import com.google.common.base.Stopwatch;
 import org.deephacks.logbuffers.LogBuffer.Builder;
-import org.deephacks.logbuffers.LogUtil.TailLog;
+import org.deephacks.logbuffers.LogBufferTest.TailLog;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

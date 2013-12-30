@@ -1,11 +1,11 @@
 package org.deephacks.logbuffers;
 
 import org.deephacks.logbuffers.LogBuffer.Builder;
-import org.deephacks.logbuffers.LogUtil.A;
-import org.deephacks.logbuffers.LogUtil.B;
-import org.deephacks.logbuffers.LogUtil.TailA;
-import org.deephacks.logbuffers.LogUtil.TailB;
 import org.deephacks.logbuffers.json.JacksonSerializer;
+import org.deephacks.logbuffers.json.JacksonSerializer.A;
+import org.deephacks.logbuffers.json.JacksonSerializer.B;
+import org.deephacks.logbuffers.json.JacksonSerializer.TailA;
+import org.deephacks.logbuffers.json.JacksonSerializer.TailB;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.deephacks.logbuffers.json.JacksonSerializer.randomA;
+import static org.deephacks.logbuffers.json.JacksonSerializer.randomB;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
@@ -24,11 +26,11 @@ public class ObjectLogBufferTest {
   TailA tailA;
   TailB tailB;
 
-  A a1 = LogUtil.randomA(1);
-  A a2 = LogUtil.randomA(2);
+  A a1 = randomA(1);
+  A a2 = randomA(2);
 
-  B b1 = LogUtil.randomB(1);
-  B b2 = LogUtil.randomB(2);
+  B b1 = randomB(1);
+  B b2 = randomB(2);
 
   @Before
   public void before() throws IOException {
@@ -288,5 +290,4 @@ public class ObjectLogBufferTest {
     Thread.sleep(10);
     return time;
   }
-
 }

@@ -2,12 +2,12 @@ package org.deephacks.logbuffers;
 
 
 import org.deephacks.logbuffers.LogBuffer.Builder;
-import org.deephacks.logbuffers.LogUtil.TailLog;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -147,4 +147,15 @@ public class LogBufferTest {
     assertThat(tail.logs.get(2), is(log1));
     assertThat(tail.logs.get(3), is(log2));
   }
+
+  public static class TailLog implements Tail<Log> {
+
+    public List<Log> logs = new ArrayList<>();
+
+    @Override
+    public void process(List<Log> logs) {
+      this.logs.addAll(logs);
+    }
+  }
+
 }
