@@ -147,7 +147,6 @@ public class ObjectLogBufferTest {
   }
 
   long timestamp() throws InterruptedException {
-    Thread.sleep(10);
     long time = System.currentTimeMillis();
     Thread.sleep(10);
     return time;
