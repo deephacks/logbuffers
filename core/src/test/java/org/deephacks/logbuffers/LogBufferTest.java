@@ -153,8 +153,8 @@ public class LogBufferTest {
     public List<Log> logs = new ArrayList<>();
 
     @Override
-    public void process(List<Log> logs) {
-      this.logs.addAll(logs);
+    public void process(Logs<Log> logs) {
+      this.logs.addAll(logs.get());
     }
   }
 

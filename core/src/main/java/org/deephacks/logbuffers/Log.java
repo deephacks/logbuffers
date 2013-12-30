@@ -21,28 +21,28 @@ public final class Log {
   private final byte[] content;
 
   /** timestamp when the log was created */
-  private final long nanoTimestamp;
+  private final long timestamp;
 
   /** unique sequential index number (position/offset) */
   private long index = -1;
 
-  Log(Long type, byte[] content, long nanoTimestamp, long index) {
+  Log(Long type, byte[] content, long timestamp, long index) {
     this.type = type;
     this.content = content;
-    this.nanoTimestamp = nanoTimestamp;
+    this.timestamp = timestamp;
     this.index = index;
   }
 
   Log(byte[] content) {
-    this(DEFAULT_TYPE, content, System.nanoTime(), -1);
+    this(DEFAULT_TYPE, content, System.currentTimeMillis(), -1);
   }
 
   Log(long type, byte[] content) {
-    this(type, content, System.nanoTime(), -1);
+    this(type, content, System.currentTimeMillis(), -1);
   }
 
   Log(Log log, long index) {
-    this.nanoTimestamp = log.nanoTimestamp;
+    this.timestamp = log.timestamp;
     this.content = log.content;
     this.type = log.type;
     this.index = index;
@@ -62,8 +62,8 @@ public final class Log {
   /**
    * @return when the log was created
    */
-  public long getNanoTimestamp() {
-    return nanoTimestamp;
+  public long getTimestamp() {
+    return timestamp;
   }
 
   /**
@@ -75,7 +75,7 @@ public final class Log {
   }
 
   /**
-   * @return nanoTimestamp + type + size + content
+   * @return timestamp + type + size + content
    */
   public int getLength() {
     return 8 + 8 + 4 + content.length;
@@ -83,7 +83,7 @@ public final class Log {
 
   void write(ExcerptAppender appender) {
     appender.startExcerpt(getLength());
-    appender.writeLong(getNanoTimestamp());
+    appender.writeLong(getTimestamp());
     appender.writeLong(type);
     appender.writeInt(content.length);
     appender.write(content);
@@ -109,7 +109,7 @@ public final class Log {
     Log log = (Log) o;
 
     if (index != log.index) return false;
-    if (nanoTimestamp != log.nanoTimestamp) return false;
+    if (timestamp != log.timestamp) return false;
     if (type != log.type) return false;
     if (!Arrays.equals(content, log.content)) return false;
 
@@ -120,7 +120,7 @@ public final class Log {
   public int hashCode() {
     int result = (int) (type ^ (type >>> 32));
     result = 31 * result + (content != null ? Arrays.hashCode(content) : 0);
-    result = 31 * result + (int) (nanoTimestamp ^ (nanoTimestamp >>> 32));
+    result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
     result = 31 * result + (int) (index ^ (index >>> 32));
     return result;
   }
@@ -129,7 +129,7 @@ public final class Log {
   public String toString() {
     return "Log{" +
             "index=" + index +
-            ", nanoTimestamp=" + nanoTimestamp +
+            ", timestamp=" + timestamp +
             ", type=" + type +
             ", content=" + Arrays.toString(content) +
             '}';

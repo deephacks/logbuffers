@@ -4,6 +4,7 @@ package org.deephacks.logbuffers.protobuf;
 import org.deephacks.logbuffers.LogBuffer;
 import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.deephacks.logbuffers.LogUtil;
+import org.deephacks.logbuffers.Logs;
 import org.deephacks.logbuffers.Tail;
 import org.deephacks.logbuffers.protobuf.ProtoLog.PageView;
 import org.deephacks.logbuffers.protobuf.ProtoLog.Visit;
@@ -51,7 +52,7 @@ public class ProtobufLogBufferTest {
     // one type log
     logBuffer.write(p1);
     logBuffer.write(p2);
-    List<PageView> pageViews = logBuffer.select(PageView.class, 0);
+    List<PageView> pageViews = logBuffer.select(PageView.class, 0).get();
 
     assertThat(pageViews.get(0).getMsg(), is(p1.getMsg()));
     assertThat(pageViews.get(0).getCode(), is(p1.getCode()));
@@ -61,7 +62,7 @@ public class ProtobufLogBufferTest {
     // another type log
     logBuffer.write(v1);
     logBuffer.write(v2);
-    List<Visit> visits = logBuffer.select(Visit.class, 0);
+    List<Visit> visits = logBuffer.select(Visit.class, 0).get();
 
     assertThat(visits.get(0).getMsg(), is(v1.getMsg()));
     assertThat(visits.get(0).getCode(), is(v1.getCode()));
@@ -95,8 +96,8 @@ public class ProtobufLogBufferTest {
     List<PageView> logs = new ArrayList<>();
 
     @Override
-    public void process(List<PageView> logs) {
-      this.logs.addAll(logs);
+    public void process(Logs<PageView> logs) {
+      this.logs.addAll(logs.get());
     }
   }
 
@@ -104,8 +105,8 @@ public class ProtobufLogBufferTest {
     List<Visit> logs = new ArrayList<>();
 
     @Override
-    public void process(List<Visit> logs) {
-      this.logs.addAll(logs);
+    public void process(Logs<Visit> logs) {
+      this.logs.addAll(logs.get());
     }
   }
 

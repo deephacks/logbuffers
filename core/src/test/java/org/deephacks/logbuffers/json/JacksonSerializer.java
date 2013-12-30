@@ -5,6 +5,8 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import org.deephacks.logbuffers.LogUtil;
+import org.deephacks.logbuffers.Logs;
 import org.deephacks.logbuffers.ObjectLogSerializer;
 import org.deephacks.logbuffers.Tail;
 
@@ -58,14 +60,20 @@ public class JacksonSerializer implements ObjectLogSerializer {
   public static class A {
     private String str;
     private Long val;
+    private long timestamp;
 
     private A() {
+    }
 
+    public A(Long val) {
+      this.val = val;
+      this.timestamp = System.currentTimeMillis();
     }
 
     public A(String str, Long val) {
       this.str = str;
       this.val = val;
+      this.timestamp = System.currentTimeMillis();
     }
 
     public String getStr() {
@@ -74,6 +82,18 @@ public class JacksonSerializer implements ObjectLogSerializer {
 
     public Long getVal() {
       return val;
+    }
+
+    public long getTimestamp() {
+      return timestamp;
+    }
+
+    public String time() {
+      return LogUtil.formatMs(timestamp) ;
+    }
+
+    public String timeAndValue() {
+      return val + " " + time();
     }
 
     @Override
@@ -161,8 +181,8 @@ public class JacksonSerializer implements ObjectLogSerializer {
     public List<A> logs = new ArrayList<>();
 
     @Override
-    public void process(List<A> logs) {
-      this.logs.addAll(logs);
+    public void process(Logs<A> logs) {
+      this.logs.addAll(logs.get());
     }
   }
 
@@ -171,8 +191,8 @@ public class JacksonSerializer implements ObjectLogSerializer {
     public List<B> logs = new ArrayList<>();
 
     @Override
-    public void process(List<B> logs) {
-      this.logs.addAll(logs);
+    public void process(Logs<B> logs) {
+      this.logs.addAll(logs.get());
     }
   }
 

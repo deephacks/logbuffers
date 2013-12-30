@@ -163,20 +163,20 @@ public final class LogBuffer {
    * Select a list of logs based on the given period of time with respect
    * to the timestamp of each log.
    *
-   * @param fromTimeNanos from (inclusive)
-   * @param toTimeNanos to (inclusive)
+   * @param fromTimeMs from (inclusive)
+   * @param toTimeMs to (inclusive)
    * @return list of matching logs
    * @throws IOException
    */
-  public List<Log> selectPeriod(long fromTimeNanos, long toTimeNanos) throws IOException {
-    Preconditions.checkArgument(fromTimeNanos <= toTimeNanos, "from must be less than to");
+  public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
+    Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     long writeIndex = this.writeIndex.getIndex();
     synchronized (readLock) {
       LinkedList<Log> messages = new LinkedList<>();
       long read = writeIndex - 1;
       for (long i = read; i > -1; i--) {
         Log log = Log.read(excerptTailer, i);
-        if (log.getNanoTimestamp() >= fromTimeNanos && log.getNanoTimestamp() <= toTimeNanos){
+        if (log.getTimestamp() >= fromTimeMs && log.getTimestamp() <= toTimeMs){
           messages.addFirst(log);
         }
       }
@@ -192,7 +192,7 @@ public final class LogBuffer {
    * @return A list of object logs.
    * @throws IOException
    */
-  public <T> List<T> select(Class<T> type, long fromIndex) throws IOException {
+  public <T> Logs<T> select(Class<T> type, long fromIndex) throws IOException {
     return select(type, fromIndex, getWriteIndex());
   }
 
@@ -205,7 +205,7 @@ public final class LogBuffer {
    * @return A list of object logs.
    * @throws IOException
    */
-  public <T> List<T> select(Class<T> type, long fromIndex, long toIndex) throws IOException {
+  public <T> Logs<T> select(Class<T> type, long fromIndex, long toIndex) throws IOException {
     List<Log> logs = select(fromIndex, toIndex);
     return convert(type, logs);
   }
@@ -215,37 +215,38 @@ public final class LogBuffer {
    * given period of time with respect to the timestamp of each log.
    *
    * @param type the type of logs to be selected.
-   * @param fromTimeNanos from (inclusive)
-   * @param toTimeNanos to (inclusive)
+   * @param fromTimeMs from (inclusive)
+   * @param toTimeMs to (inclusive)
    * @return list of matching logs
    * @throws IOException
    */
-  public <T> List<T> selectPeriod(Class<T> type, long fromTimeNanos, long toTimeNanos) throws IOException {
-    final List<Log> logs = selectPeriod(fromTimeNanos, toTimeNanos);
+  public <T> Logs<T> selectPeriod(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
+    final List<Log> logs = selectPeriod(fromTimeMs, toTimeMs);
     return convert(type, logs);
   }
 
-  private <T> List<T> convert(Class<T> type, List<Log> logs) {
-    List<T> objects = new ArrayList<>();
+  private <T> Logs<T> convert(Class<T> type, List<Log> logs) {
+    Logs<T> result = new Logs<>();
     for (Log log : logs) {
       if (log.getType() != Log.DEFAULT_TYPE) {
         ObjectLogSerializer serializer = serializers.getSerializer(log.getType());
         Class<?> cls = serializer.getMapping().get(log.getType());
         if (type.isAssignableFrom(cls)) {
-          objects.add((T) serializer.deserialize(log.getContent(), log.getType()));
+          T object = (T) serializer.deserialize(log.getContent(), log.getType());
+          result.put(object, log);
         }
       } else {
         if (type.isAssignableFrom(Log.class)) {
-          objects.add((T) log);
+          result.put((T) log, log);
         }
       }
     }
-    return objects;
+    return result;
   }
 
-  public <T> void forward(Tail<T> tail) throws IOException {
+  public <T> ForwardResult forward(Tail<T> tail) throws IOException {
     LogBufferTail<T> tailBuffer = putIfAbsent(tail);
-    tailBuffer.forward();
+    return tailBuffer.forward();
   }
 
   /**
@@ -315,8 +316,22 @@ public final class LogBuffer {
     logBufferTail.forwardWithFixedDelay(delay, unit);
   }
 
+  public void forwardWithFixedDelay(TailChunk<?> tail, long chunkMs, int delay, TimeUnit unit) throws IOException {
+    LogBufferTail<?> logBufferTail = putIfAbsent(tail, chunkMs);
+    logBufferTail.forwardWithFixedDelay(delay, unit);
+  }
+
+
   private <T> LogBufferTail<T> putIfAbsent(Tail<?> tail) throws IOException {
     LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTail<>(this, tail));
+    if (logBufferTail == null) {
+      logBufferTail = tails.get(tail.getClass());
+    }
+    return (LogBufferTail<T>) logBufferTail;
+  }
+
+  private <T> LogBufferTail<T> putIfAbsent(TailChunk<?> tail, long chunkMs) throws IOException {
+    LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTailChunk<>(this, tail, chunkMs));
     if (logBufferTail == null) {
       logBufferTail = tails.get(tail.getClass());
     }

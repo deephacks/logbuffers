@@ -1,7 +1,5 @@
 package org.deephacks.logbuffers;
 
-import java.util.List;
-
 /**
  * A tail tracks a specific data type attached to a specific log buffer. A log buffer
  * can have many tails. Each tail have separate a index tracker that does not affect
@@ -20,5 +18,5 @@ public interface Tail<T> {
    *
    * @param logs to be processed.
    */
-  public void process(List<T> logs);
+  public void process(Logs<T> logs);
 }

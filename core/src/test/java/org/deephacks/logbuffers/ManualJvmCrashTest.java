@@ -6,7 +6,6 @@ import org.deephacks.logbuffers.util.JvmCrasher;
 import org.deephacks.logbuffers.util.PersistentCounter;
 
 import java.io.File;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -31,9 +30,9 @@ public class ManualJvmCrashTest {
   public static class Tailer implements Tail<Log> {
 
     @Override
-    public void process(List<Log> logs) {
+    public void process(Logs<Log> logs) {
       StringBuilder sb = new StringBuilder();
-      for (Log l : logs) {
+      for (Log l : logs.get()) {
         sb.append(l.getIndex()).append(",");
       }
       System.out.println(sb.toString());

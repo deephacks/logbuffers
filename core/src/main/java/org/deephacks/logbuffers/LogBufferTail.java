@@ -19,11 +19,11 @@ import java.util.concurrent.TimeUnit;
  * This process consumes all logs of any type.
  */
 class LogBufferTail<T> {
-  private LogBuffer logBuffer;
+  protected LogBuffer logBuffer;
+  protected Class<T> type;
+  protected Tail<T> tail;
   private Index readIndex;
-  private Tail<T> tail;
   private ScheduledFuture<?> scheduledFuture;
-  private Class<T> type;
   private String tailId;
 
   LogBufferTail(LogBuffer logBuffer, Tail<T> tail) throws IOException {
@@ -44,19 +44,21 @@ class LogBufferTail<T> {
    *
    * @throws IOException
    */
-  void forward() throws IOException {
-    if (readIndex == null) {
-      readIndex = new Index(getTailId());
-    }
+  ForwardResult forward() throws IOException {
     /**
      * Fix paging mechanism to handle when read and write indexes are too far apart!
      */
     long currentWriteIndex = logBuffer.getWriteIndex();
-    long currentReadIndex = readIndex.getIndex();
-    List<T> messages = logBuffer.select(type, currentReadIndex, currentWriteIndex);
+    long currentReadIndex = getReadIndex();
+    Logs<T> messages = logBuffer.select(type, currentReadIndex, currentWriteIndex);
     tail.process(messages);
     // only write the read index if tail was successful
-    readIndex.writeIndex(currentWriteIndex);
+    writeReadIndex(currentWriteIndex);
+    return new ForwardResult();
+  }
+
+  protected void writeReadIndex(long index) throws IOException {
+    readIndex.writeIndex(index);
   }
 
   /**
@@ -70,6 +72,10 @@ class LogBufferTail<T> {
       return;
     }
     scheduledFuture = this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this), 0, delay, unit);
+  }
+
+  public void forwardNow() {
+    this.logBuffer.getCachedExecutor().schedule(new TailSchedule(this), 0, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -89,6 +95,9 @@ class LogBufferTail<T> {
    * @return the current read index.
    */
   synchronized long getReadIndex() throws IOException {
+    if (readIndex == null) {
+      readIndex = new Index(getTailId());
+    }
     return readIndex.getIndex();
   }
 
@@ -98,6 +107,8 @@ class LogBufferTail<T> {
   public void close() throws IOException {
     readIndex.close();
   }
+
+
 
   private static final class TailSchedule implements Runnable {
     private LogBufferTail tailer;
@@ -109,8 +120,12 @@ class LogBufferTail<T> {
     @Override
     public void run() {
       try {
-        tailer.forward();
+        ForwardResult forwardResult = tailer.forward();
+        if (!forwardResult.isFinished()) {
+         tailer.forwardNow();
+        }
       } catch (Exception e) {
+        System.err.println(e.getMessage());
         // ignore for now
       }
     }

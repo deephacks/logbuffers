@@ -2,6 +2,7 @@ package org.deephacks.logbuffers.util;
 
 import net.openhft.chronicle.SingleMappedFileCache;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -9,9 +10,16 @@ import java.nio.ByteOrder;
 public class PersistentCounter {
   private ByteBuffer buffer;
 
-  public PersistentCounter() throws FileNotFoundException {
-    SingleMappedFileCache numberCache = new SingleMappedFileCache("/tmp/logbuffer/numbers", 8);
+  public PersistentCounter(String basePath) throws FileNotFoundException {
+    File file = new File(basePath);
+    file.mkdirs();
+    SingleMappedFileCache numberCache = new SingleMappedFileCache(basePath + "/numbers", 8);
     buffer = numberCache.acquireBuffer(0, false).order(ByteOrder.nativeOrder());
+  }
+
+
+  public PersistentCounter() throws FileNotFoundException {
+    this("/tmp/logbuffer");
   }
 
   public long getAndIncrement() {
