@@ -5,11 +5,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
-public class LogBufferTailChunk<T> extends LogBufferTail<T> {
+class LogBufferTailChunk<T> extends LogBufferTail<T> {
   private long chunkMs;
   public static SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss:SSS");
 
-  LogBufferTailChunk(LogBuffer logBuffer, TailChunk<T> tail, long chunkMs) throws IOException {
+  LogBufferTailChunk(LogBuffer logBuffer, Tail<T> tail, long chunkMs) throws IOException {
     super(logBuffer, tail);
     this.chunkMs = chunkMs;
   }

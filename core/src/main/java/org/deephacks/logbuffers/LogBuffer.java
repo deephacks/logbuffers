@@ -306,7 +306,9 @@ public final class LogBuffer {
   }
 
   /**
-   * Forwards the log processing periodically by notifying the tail each round.
+   * Forwards the log processing periodically by notifying the tail each round. All logs that are unprocessed
+   * will be given each round. Logs are not duplicated. If a failure occur, all unprocessed logs are
+   * retried next round.
    *
    * @param delay the delay between the termination of one execution and the commencement of the next.
    * @param unit time unit of the delay parameter.
@@ -316,11 +318,20 @@ public final class LogBuffer {
     logBufferTail.forwardWithFixedDelay(delay, unit);
   }
 
-  public void forwardWithFixedDelay(TailChunk<?> tail, long chunkMs, int delay, TimeUnit unit) throws IOException {
+  /**
+   * Forwards the log processing periodically by notifying the tail each round. Logs are given
+   * iteratively in chunks according to a certain period of time until all unprocessed logs are
+   * finished. Logs are not duplicated. If a failure occur, the same chunk is retried next round.
+   *
+   * @param chunkMs how long each period of logs to be processed
+   * @param delay the delay between the termination of one execution and the commencement of the next.
+   * @param unit time unit of the delay parameter.
+   * @throws IOException
+   */
+  public void forwardTimeChunksWithFixedDelay(Tail<?> tail, long chunkMs, int delay, TimeUnit unit) throws IOException {
     LogBufferTail<?> logBufferTail = putIfAbsent(tail, chunkMs);
     logBufferTail.forwardWithFixedDelay(delay, unit);
   }
-
 
   private <T> LogBufferTail<T> putIfAbsent(Tail<?> tail) throws IOException {
     LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTail<>(this, tail));
@@ -330,7 +341,7 @@ public final class LogBuffer {
     return (LogBufferTail<T>) logBufferTail;
   }
 
-  private <T> LogBufferTail<T> putIfAbsent(TailChunk<?> tail, long chunkMs) throws IOException {
+  private <T> LogBufferTail<T> putIfAbsent(Tail<?> tail, long chunkMs) throws IOException {
     LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTailChunk<>(this, tail, chunkMs));
     if (logBufferTail == null) {
       logBufferTail = tails.get(tail.getClass());

@@ -4,7 +4,7 @@ import org.deephacks.logbuffers.LogBuffer;
 import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.deephacks.logbuffers.LogUtil;
 import org.deephacks.logbuffers.Logs;
-import org.deephacks.logbuffers.TailChunk;
+import org.deephacks.logbuffers.Tail;
 import org.deephacks.logbuffers.json.JacksonSerializer;
 import org.deephacks.logbuffers.json.JacksonSerializer.A;
 import org.deephacks.logbuffers.util.PersistentCounter;
@@ -31,7 +31,7 @@ public class PeriodTest {
     PeriodicWriter writer = new PeriodicWriter(buffer, 10);
     writer.start();
     TailPeriod tail = new TailPeriod();
-    buffer.forwardWithFixedDelay(tail, 1000, 1000, TimeUnit.MILLISECONDS);
+    buffer.forwardTimeChunksWithFixedDelay(tail, 1000, 1000, TimeUnit.MILLISECONDS);
     Thread.sleep(3000);
     writer.interrupt();
     Thread.sleep(10000);
@@ -42,7 +42,7 @@ public class PeriodTest {
     Thread.sleep(60000);
   }
 
-  public static class TailPeriod implements TailChunk<A> {
+  public static class TailPeriod implements Tail<A> {
 
     @Override
     public void process(Logs<A> logs) {
