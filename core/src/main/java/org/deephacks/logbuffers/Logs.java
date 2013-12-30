@@ -1,34 +1,58 @@
 package org.deephacks.logbuffers;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.LinkedList;
 
+/**
+ * A list of logs.
+ */
 public class Logs<T> {
-  private LinkedHashMap<T, Log> logs = new LinkedHashMap<>();
-  private ArrayList<T> objects;
 
+  /** sequentially ordered logs according to index and timestamp */
+  private LinkedHashMap<T, Log> logs = new LinkedHashMap<>();
+
+  /** the actual objects */
+  private LinkedList<T> objects;
+
+  /**
+   * the buffer is responsible for putting the logs in the correct order
+   */
   void put(T object, Log log) {
     logs.put(object, log);
   }
 
-  public Log get(T object) {
-    return logs.get(object);
-  }
-
-  public List<T> get() {
+  /**
+   * Get all logs ordered sequentially according to index and timestamp
+   *
+   * @return the real objects that represent the logs
+   */
+  public LinkedList<T> getObjects() {
     if (objects == null) {
-      objects = new ArrayList<>(logs.keySet());
+      objects = new LinkedList<>(logs.keySet());
     }
     return objects;
   }
 
-  public int size() {
-    return logs.size();
+  /**
+   * @param object to fetch the raw log for
+   * @return log the contain meta data such as index, timestamp etc.
+   */
+  public Log getLog(T object) {
+    return logs.get(object);
   }
 
+  /**
+   * @return the last log contained in this list of logs
+   */
   public Log getLastLog() {
-    T last = get().get(objects.size() - 1);
+    T last = getObjects().getLast();
     return logs.get(last);
+  }
+
+  /**
+   * @return number of logs
+   */
+  public int size() {
+    return logs.size();
   }
 }

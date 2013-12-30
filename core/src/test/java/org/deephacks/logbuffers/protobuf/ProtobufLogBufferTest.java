@@ -52,7 +52,7 @@ public class ProtobufLogBufferTest {
     // one type log
     logBuffer.write(p1);
     logBuffer.write(p2);
-    List<PageView> pageViews = logBuffer.select(PageView.class, 0).get();
+    List<PageView> pageViews = logBuffer.select(PageView.class, 0).getObjects();
 
     assertThat(pageViews.get(0).getMsg(), is(p1.getMsg()));
     assertThat(pageViews.get(0).getCode(), is(p1.getCode()));
@@ -62,7 +62,7 @@ public class ProtobufLogBufferTest {
     // another type log
     logBuffer.write(v1);
     logBuffer.write(v2);
-    List<Visit> visits = logBuffer.select(Visit.class, 0).get();
+    List<Visit> visits = logBuffer.select(Visit.class, 0).getObjects();
 
     assertThat(visits.get(0).getMsg(), is(v1.getMsg()));
     assertThat(visits.get(0).getCode(), is(v1.getCode()));
@@ -97,7 +97,7 @@ public class ProtobufLogBufferTest {
 
     @Override
     public void process(Logs<PageView> logs) {
-      this.logs.addAll(logs.get());
+      this.logs.addAll(logs.getObjects());
     }
   }
 
@@ -106,7 +106,7 @@ public class ProtobufLogBufferTest {
 
     @Override
     public void process(Logs<Visit> logs) {
-      this.logs.addAll(logs.get());
+      this.logs.addAll(logs.getObjects());
     }
   }
 

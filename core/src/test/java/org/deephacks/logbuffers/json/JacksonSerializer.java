@@ -182,7 +182,7 @@ public class JacksonSerializer implements ObjectLogSerializer {
 
     @Override
     public void process(Logs<A> logs) {
-      this.logs.addAll(logs.get());
+      this.logs.addAll(logs.getObjects());
     }
   }
 
@@ -192,7 +192,7 @@ public class JacksonSerializer implements ObjectLogSerializer {
 
     @Override
     public void process(Logs<B> logs) {
-      this.logs.addAll(logs.get());
+      this.logs.addAll(logs.getObjects());
     }
   }
 

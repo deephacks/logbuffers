@@ -50,7 +50,7 @@ public class PeriodTest {
         throw new RuntimeException("random failure");
       }
       ArrayList<String> vals = new ArrayList<>();
-      for (A a : logs.get()) {
+      for (A a : logs.getObjects()) {
         vals.add(a.timeAndValue());
       }
       System.out.println(vals);

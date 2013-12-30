@@ -57,18 +57,18 @@ public class JacksonLogBufferTest {
   public void test_write_read_one_type() throws IOException {
     // one log
     logBuffer.write(a1);
-    List<A> select = logBuffer.select(A.class, 0).get();
+    List<A> select = logBuffer.select(A.class, 0).getObjects();
     assertThat(select.get(0), is(a1));
 
     // write another
     logBuffer.write(a2);
-    select = logBuffer.select(A.class, 0).get();
+    select = logBuffer.select(A.class, 0).getObjects();
     assertThat(select.size(), is(2));
     assertThat(select.get(0), is(a1));
     assertThat(select.get(1), is(a2));
 
     // forward index past first log
-    select = logBuffer.select(A.class, 1).get();
+    select = logBuffer.select(A.class, 1).getObjects();
     assertThat(select.size(), is(1));
     assertThat(select.get(0), is(a2));
   }
@@ -78,26 +78,26 @@ public class JacksonLogBufferTest {
   public void test_write_read_type_isolation() throws IOException {
     // A log
     logBuffer.write(a1);
-    List<A> selectA = logBuffer.select(A.class, 0).get();
+    List<A> selectA = logBuffer.select(A.class, 0).getObjects();
     assertThat(selectA.size(), is(1));
     assertThat(selectA.get(0), is(a1));
 
     // B log
     logBuffer.write(b1);
-    List<B> selectB = logBuffer.select(B.class, 0).get();
+    List<B> selectB = logBuffer.select(B.class, 0).getObjects();
     assertThat(selectB.size(), is(1));
     assertThat(selectB.get(0), is(b1));
 
     // second A log - check that B is not in the set
     logBuffer.write(a2);
-    selectA = logBuffer.select(A.class, 0).get();
+    selectA = logBuffer.select(A.class, 0).getObjects();
     assertThat(selectA.size(), is(2));
     assertThat(selectA.get(0), is(a1));
     assertThat(selectA.get(1), is(a2));
 
     // second B log - check that A is not in the set
     logBuffer.write(b2);
-    selectB = logBuffer.select(B.class, 0).get();
+    selectB = logBuffer.select(B.class, 0).getObjects();
     assertThat(selectB.size(), is(2));
     assertThat(selectB.get(0), is(b1));
     assertThat(selectB.get(1), is(b2));
@@ -124,62 +124,62 @@ public class JacksonLogBufferTest {
     long t5 = nanoTimestamp();
 
     // check select outside index
-    List<A> a = logBuffer.select(A.class, 100, 100).get();
+    List<A> a = logBuffer.select(A.class, 100, 100).getObjects();
     assertThat(a.size(), is(0));
-    List<B> b = logBuffer.select(B.class, 100, 1000).get();
+    List<B> b = logBuffer.select(B.class, 100, 1000).getObjects();
     assertThat(a.size(), is(0));
     assertThat(b.size(), is(0));
 
-    a = logBuffer.selectPeriod(A.class, Long.MAX_VALUE - 100000, Long.MAX_VALUE).get();
+    a = logBuffer.selectPeriod(A.class, Long.MAX_VALUE - 100000, Long.MAX_VALUE).getObjects();
 
     // select a1 exactly
-    a = logBuffer.selectPeriod(A.class, al1.getTimestamp(), al1.getTimestamp()).get();
+    a = logBuffer.selectPeriod(A.class, al1.getTimestamp(), al1.getTimestamp()).getObjects();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
     // select a2 exactly
-    a = logBuffer.selectPeriod(A.class, al2.getTimestamp(), al2.getTimestamp()).get();
+    a = logBuffer.selectPeriod(A.class, al2.getTimestamp(), al2.getTimestamp()).getObjects();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a2));
 
     // A selecting (a1) b1 a2 b2
-    a = logBuffer.selectPeriod(A.class, t1, t3).get();
+    a = logBuffer.selectPeriod(A.class, t1, t3).getObjects();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
     // A selecting (a1 b1) a2 b2
-    a = logBuffer.selectPeriod(A.class, t1, t3).get();
+    a = logBuffer.selectPeriod(A.class, t1, t3).getObjects();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
     // A selecting (a1 b1 a2 b2)
-    a = logBuffer.selectPeriod(A.class, t1, t5).get();
+    a = logBuffer.selectPeriod(A.class, t1, t5).getObjects();
     assertThat(a.size(), is(2));
     assertThat(a.get(0), is(a1));
     assertThat(a.get(1), is(a2));
 
     // select b1 exactly
-    b = logBuffer.selectPeriod(B.class, bl1.getTimestamp(), bl1.getTimestamp()).get();
+    b = logBuffer.selectPeriod(B.class, bl1.getTimestamp(), bl1.getTimestamp()).getObjects();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
     // select b2 exactly
-    b = logBuffer.selectPeriod(B.class, bl2.getTimestamp(), bl2.getTimestamp()).get();
+    b = logBuffer.selectPeriod(B.class, bl2.getTimestamp(), bl2.getTimestamp()).getObjects();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b2));
 
     // B selecting a1 (b1) a2 b2
-    b = logBuffer.selectPeriod(B.class, t2, t3).get();
+    b = logBuffer.selectPeriod(B.class, t2, t3).getObjects();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
     // B selecting a1 (b1 a2) b2
-    b = logBuffer.selectPeriod(B.class, t2, t4).get();
+    b = logBuffer.selectPeriod(B.class, t2, t4).getObjects();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
     // B selecting (a1 b1 a2 b2)
-    b = logBuffer.selectPeriod(B.class, t1, t5).get();
+    b = logBuffer.selectPeriod(B.class, t1, t5).getObjects();
     assertThat(b.size(), is(2));
     assertThat(b.get(0), is(b1));
     assertThat(b.get(1), is(b2));
@@ -262,7 +262,7 @@ public class JacksonLogBufferTest {
 
       @Override
       public void process(Logs<A> logs) {
-        result.addAll(logs.get());
+        result.addAll(logs.getObjects());
         throw new IllegalArgumentException();
       }
 

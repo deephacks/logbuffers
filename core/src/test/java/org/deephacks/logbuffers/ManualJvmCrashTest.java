@@ -32,7 +32,7 @@ public class ManualJvmCrashTest {
     @Override
     public void process(Logs<Log> logs) {
       StringBuilder sb = new StringBuilder();
-      for (Log l : logs.get()) {
+      for (Log l : logs.getObjects()) {
         sb.append(l.getIndex()).append(",");
       }
       System.out.println(sb.toString());

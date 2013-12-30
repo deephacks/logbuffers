@@ -21,7 +21,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
 
   @Override
   ForwardResult forward() throws IOException {
-    // get the index that was written by previous tail acknowledgement
+    // getObjects the index that was written by previous tail acknowledgement
     long currentReadIndex = getReadIndex();
 
     // fetch the latest written log so we can determine how far ahead

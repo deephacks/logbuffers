@@ -154,7 +154,7 @@ public class LogBufferTest {
 
     @Override
     public void process(Logs<Log> logs) {
-      this.logs.addAll(logs.get());
+      this.logs.addAll(logs.getObjects());
     }
   }
 
