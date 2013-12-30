@@ -18,7 +18,7 @@ import java.util.List;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
-public class ProtobufSerializerTest {
+public class ProtobufLogBufferTest {
 
   PageViewTail pageViewTail;
   VisitTail visitTail;

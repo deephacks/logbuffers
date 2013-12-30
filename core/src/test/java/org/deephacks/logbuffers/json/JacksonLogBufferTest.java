@@ -1,7 +1,10 @@
-package org.deephacks.logbuffers;
+package org.deephacks.logbuffers.json;
 
+import org.deephacks.logbuffers.Log;
+import org.deephacks.logbuffers.LogBuffer;
 import org.deephacks.logbuffers.LogBuffer.Builder;
-import org.deephacks.logbuffers.json.JacksonSerializer;
+import org.deephacks.logbuffers.LogUtil;
+import org.deephacks.logbuffers.Tail;
 import org.deephacks.logbuffers.json.JacksonSerializer.A;
 import org.deephacks.logbuffers.json.JacksonSerializer.B;
 import org.deephacks.logbuffers.json.JacksonSerializer.TailA;
@@ -20,7 +23,7 @@ import static org.deephacks.logbuffers.json.JacksonSerializer.randomB;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
-public class ObjectLogBufferTest {
+public class JacksonLogBufferTest {
   LogBuffer logBuffer;
 
   TailA tailA;
