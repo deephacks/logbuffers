@@ -1,5 +1,6 @@
 package org.deephacks.logbuffers;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.ExcerptTailer;
@@ -90,15 +91,17 @@ public final class Log {
     appender.finish();
   }
 
-  static Log read(ExcerptTailer tailer, long index) {
+  static Optional<Log> read(ExcerptTailer tailer, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
-    tailer.index(index);
+    if (!tailer.index(index)) {
+      return Optional.absent();
+    }
     long nanoTimestamp = tailer.readLong();
     long type = tailer.readLong();
     int messageSize = tailer.readInt();
     byte[] message = new byte[messageSize];
     tailer.read(message);
-    return new Log(type, message, nanoTimestamp, index);
+    return Optional.fromNullable(new Log(type, message, nanoTimestamp, index));
   }
 
   @Override

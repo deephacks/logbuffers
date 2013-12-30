@@ -1,5 +1,7 @@
 package org.deephacks.logbuffers;
 
+import com.google.common.base.Optional;
+
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -22,13 +24,12 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     // get the index that was written by previous tail acknowledgement
     long currentReadIndex = getReadIndex();
 
-    // fetch the last written log so we can determine how far ahead
+    // fetch the latest written log so we can determine how far ahead
     // the writer index is so we can speed up if the tail backlog is too big.
-    List<Log> writes = logBuffer.select(logBuffer.getWriteIndex() - 1);
-    if (writes.isEmpty()) {
+    Optional<Log> latestWrite = logBuffer.getLatestWrite();
+    if (!latestWrite.isPresent()) {
       return new ForwardResult();
     }
-    Log lastWrite = writes.get(0);
 
     List<Log> current = logBuffer.select(currentReadIndex);
     if (current.isEmpty()) {
@@ -50,11 +51,11 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       return new ForwardResult();
     }
     // prepare the next read index BEFORE we hand over logs to tail
-    Log logRead = getLastLog(logs);
-    long lastReadIndex = logRead.getIndex();
+    Log lastRead = logs.getLastLog();
+    long lastReadIndex = lastRead.getIndex();
     // prepare result
     ForwardResult result = new ForwardResult();
-    if (logRead.getTimestamp() < lastWrite.getTimestamp()) {
+    if (lastRead.getTimestamp() < latestWrite.get().getTimestamp()) {
       // alter the result to indicate that there are already more logs
       // to process after this round have been executed. Hence we can
       // act quickly and process these as fast as possible, if needed.
@@ -67,12 +68,6 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     // only write/persist last read index if tail was successful
     writeReadIndex(lastReadIndex + 1);
     return result;
-  }
-
-  private Log getLastLog(Logs<T> logs) {
-    List<T> objects = logs.get();
-    T last = objects.get(objects.size() - 1);
-    return logs.get(last);
   }
 
   /**

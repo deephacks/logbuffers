@@ -6,6 +6,7 @@ import java.util.List;
 
 public class Logs<T> {
   private LinkedHashMap<T, Log> logs = new LinkedHashMap<>();
+  private ArrayList<T> objects;
 
   void put(T object, Log log) {
     logs.put(object, log);
@@ -16,10 +17,18 @@ public class Logs<T> {
   }
 
   public List<T> get() {
-    return new ArrayList<>(logs.keySet());
+    if (objects == null) {
+      objects = new ArrayList<>(logs.keySet());
+    }
+    return objects;
   }
 
   public int size() {
     return logs.size();
+  }
+
+  public Log getLastLog() {
+    T last = get().get(objects.size() - 1);
+    return logs.get(last);
   }
 }

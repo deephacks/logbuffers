@@ -133,6 +133,13 @@ public final class LogBuffer {
     return select(fromIndex, writeIdx);
   }
 
+  Optional<Log> get(long index) throws IOException {
+    return Log.read(excerptTailer, index);
+  }
+
+  Optional<Log> getLatestWrite() throws IOException {
+    return get(writeIndex.getIndex() - 1);
+  }
 
   /**
    * Select a list of log objects from a specific writeIndex up until a
@@ -153,7 +160,11 @@ public final class LogBuffer {
       }
       long read = fromIndex;
       while (read < toIndex) {
-        messages.add(Log.read(excerptTailer, read++));
+        Optional<Log> optional = get(read++);
+        if (!optional.isPresent()) {
+          break;
+        }
+        messages.add(optional.get());
       }
       return messages;
     }
@@ -175,7 +186,11 @@ public final class LogBuffer {
       LinkedList<Log> messages = new LinkedList<>();
       long read = writeIndex - 1;
       for (long i = read; i > -1; i--) {
-        Log log = Log.read(excerptTailer, i);
+        Optional<Log> optional = get(i);
+        if (!optional.isPresent()) {
+          continue;
+        }
+        Log log = optional.get();
         if (log.getTimestamp() >= fromTimeMs && log.getTimestamp() <= toTimeMs){
           messages.addFirst(log);
         }
