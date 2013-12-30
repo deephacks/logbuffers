@@ -93,16 +93,16 @@ public class ObjectLogBufferTest {
   @Test
   public void test_write_read_period() throws Exception {
     long t1 = timestamp();
-    logBuffer.write(a1);
+    Log al1 = logBuffer.write(a1);
 
     long t2 = timestamp();
-    logBuffer.write(b1);
+    Log bl1 = logBuffer.write(b1);
 
     long t3 = timestamp();
-    logBuffer.write(a2);
+    Log al2 = logBuffer.write(a2);
 
     long t4 = timestamp();
-    logBuffer.write(b2);
+    Log bl2 = logBuffer.write(b2);
 
     long t5 = timestamp();
 
@@ -113,33 +113,53 @@ public class ObjectLogBufferTest {
     assertThat(a.size(), is(0));
     assertThat(b.size(), is(0));
 
-    // select exact A
+    // select a1 exactly
+    a = logBuffer.selectPeriod(A.class, al1.getTimestamp(), al1.getTimestamp());
+    assertThat(a.size(), is(1));
+    assertThat(a.get(0), is(a1));
+
+    // select a2 exactly
+    a = logBuffer.selectPeriod(A.class, al2.getTimestamp(), al2.getTimestamp());
+    assertThat(a.size(), is(1));
+    assertThat(a.get(0), is(a2));
+
+    // A selecting (a1) b1 a2 b2
     a = logBuffer.selectPeriod(A.class, t1, t3);
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
-    // select only A excluding B
+    // A selecting (a1 b1) a2 b2
     a = logBuffer.selectPeriod(A.class, t1, t3);
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
-    // select all A excluding B
+    // A selecting (a1 b1 a2 b2)
     a = logBuffer.selectPeriod(A.class, t1, t5);
     assertThat(a.size(), is(2));
     assertThat(a.get(0), is(a1));
     assertThat(a.get(1), is(a2));
 
-    // select exact B
+    // select b1 exactly
+    b = logBuffer.selectPeriod(B.class, bl1.getTimestamp(), bl1.getTimestamp());
+    assertThat(b.size(), is(1));
+    assertThat(b.get(0), is(b1));
+
+    // select b2 exactly
+    b = logBuffer.selectPeriod(B.class, bl2.getTimestamp(), bl2.getTimestamp());
+    assertThat(b.size(), is(1));
+    assertThat(b.get(0), is(b2));
+
+    // B selecting a1 (b1) a2 b2
     b = logBuffer.selectPeriod(B.class, t2, t3);
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
-    // select only B excluding A
+    // B selecting a1 (b1 a2) b2
     b = logBuffer.selectPeriod(B.class, t2, t4);
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
-    // select only B excluding A
+    // B selecting (a1 b1 a2 b2)
     b = logBuffer.selectPeriod(B.class, t1, t5);
     assertThat(b.size(), is(2));
     assertThat(b.get(0), is(b1));
