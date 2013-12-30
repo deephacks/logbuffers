@@ -87,7 +87,7 @@ public class LogBufferTest {
     assertThat(select.size(), is(1));
     assertThat(select.get(0), is(log5));
 
-    select = logBuffer.selectPeriod(6, System.currentTimeMillis());
+    select = logBuffer.selectPeriod(6, System.nanoTime());
     assertThat(select.size(), is(0));
 
     select = logBuffer.selectPeriod(3, 5);

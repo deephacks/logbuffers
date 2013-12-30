@@ -163,20 +163,20 @@ public final class LogBuffer {
    * Select a list of logs based on the given period of time with respect
    * to the timestamp of each log.
    *
-   * @param fromTimeMs from (inclusive)
-   * @param toTimeMs to (inclusive)
+   * @param fromTimeNanos from (inclusive)
+   * @param toTimeNanos to (inclusive)
    * @return list of matching logs
    * @throws IOException
    */
-  public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
-    Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
+  public List<Log> selectPeriod(long fromTimeNanos, long toTimeNanos) throws IOException {
+    Preconditions.checkArgument(fromTimeNanos <= toTimeNanos, "from must be less than to");
     long writeIndex = this.writeIndex.getIndex();
     synchronized (readLock) {
       LinkedList<Log> messages = new LinkedList<>();
       long read = writeIndex - 1;
       for (long i = read; i > -1; i--) {
         Log log = Log.read(excerptTailer, i);
-        if (log.getTimestamp() >= fromTimeMs && log.getTimestamp() <= toTimeMs){
+        if (log.getNanoTimestamp() >= fromTimeNanos && log.getNanoTimestamp() <= toTimeNanos){
           messages.addFirst(log);
         }
       }
@@ -215,13 +215,13 @@ public final class LogBuffer {
    * given period of time with respect to the timestamp of each log.
    *
    * @param type the type of logs to be selected.
-   * @param fromTimeMs from (inclusive)
-   * @param toTimeMs to (inclusive)
+   * @param fromTimeNanos from (inclusive)
+   * @param toTimeNanos to (inclusive)
    * @return list of matching logs
    * @throws IOException
    */
-  public <T> List<T> selectPeriod(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
-    final List<Log> logs = selectPeriod(fromTimeMs, toTimeMs);
+  public <T> List<T> selectPeriod(Class<T> type, long fromTimeNanos, long toTimeNanos) throws IOException {
+    final List<Log> logs = selectPeriod(fromTimeNanos, toTimeNanos);
     return convert(type, logs);
   }
 

@@ -25,11 +25,11 @@ final class Index {
         return buffer.getLong(0);
     }
 
-    synchronized void writeTimestamp(long timestamp) {
-        buffer.putLong(8, timestamp);
+    synchronized void writeNanoTimestamp(long nanos) {
+        buffer.putLong(8, nanos);
     }
 
-    synchronized long getTimestamp() throws IOException {
+    synchronized long getNanoTimestamp() throws IOException {
         return buffer.getLong(8);
     }
 
@@ -40,7 +40,7 @@ final class Index {
     long getAndIncrement() throws IOException {
         long index = getIndex();
         writeIndex(index + 1);
-        writeTimestamp(System.currentTimeMillis());
+        writeNanoTimestamp(System.nanoTime());
         return index;
     }
 }

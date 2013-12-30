@@ -21,28 +21,28 @@ public final class Log {
   private final byte[] content;
 
   /** timestamp when the log was created */
-  private final long timestamp;
+  private final long nanoTimestamp;
 
   /** unique sequential index number (position/offset) */
   private long index = -1;
 
-  Log(Long type, byte[] content, long timestamp, long index) {
+  Log(Long type, byte[] content, long nanoTimestamp, long index) {
     this.type = type;
     this.content = content;
-    this.timestamp = timestamp;
+    this.nanoTimestamp = nanoTimestamp;
     this.index = index;
   }
 
   Log(byte[] content) {
-    this(DEFAULT_TYPE, content, System.currentTimeMillis(), -1);
+    this(DEFAULT_TYPE, content, System.nanoTime(), -1);
   }
 
   Log(long type, byte[] content) {
-    this(type, content, System.currentTimeMillis(), -1);
+    this(type, content, System.nanoTime(), -1);
   }
 
   Log(Log log, long index) {
-    this.timestamp = log.timestamp;
+    this.nanoTimestamp = log.nanoTimestamp;
     this.content = log.content;
     this.type = log.type;
     this.index = index;
@@ -62,8 +62,8 @@ public final class Log {
   /**
    * @return when the log was created
    */
-  public long getTimestamp() {
-    return timestamp;
+  public long getNanoTimestamp() {
+    return nanoTimestamp;
   }
 
   /**
@@ -75,7 +75,7 @@ public final class Log {
   }
 
   /**
-   * @return timestamp + type + size + content
+   * @return nanoTimestamp + type + size + content
    */
   public int getLength() {
     return 8 + 8 + 4 + content.length;
@@ -83,7 +83,7 @@ public final class Log {
 
   void write(ExcerptAppender appender) {
     appender.startExcerpt(getLength());
-    appender.writeLong(getTimestamp());
+    appender.writeLong(getNanoTimestamp());
     appender.writeLong(type);
     appender.writeInt(content.length);
     appender.write(content);
@@ -93,12 +93,12 @@ public final class Log {
   static Log read(ExcerptTailer tailer, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
     tailer.index(index);
-    long timestamp = tailer.readLong();
+    long nanoTimestamp = tailer.readLong();
     long type = tailer.readLong();
     int messageSize = tailer.readInt();
     byte[] message = new byte[messageSize];
     tailer.read(message);
-    return new Log(type, message, timestamp, index);
+    return new Log(type, message, nanoTimestamp, index);
   }
 
   @Override
@@ -109,7 +109,7 @@ public final class Log {
     Log log = (Log) o;
 
     if (index != log.index) return false;
-    if (timestamp != log.timestamp) return false;
+    if (nanoTimestamp != log.nanoTimestamp) return false;
     if (type != log.type) return false;
     if (!Arrays.equals(content, log.content)) return false;
 
@@ -120,7 +120,7 @@ public final class Log {
   public int hashCode() {
     int result = (int) (type ^ (type >>> 32));
     result = 31 * result + (content != null ? Arrays.hashCode(content) : 0);
-    result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
+    result = 31 * result + (int) (nanoTimestamp ^ (nanoTimestamp >>> 32));
     result = 31 * result + (int) (index ^ (index >>> 32));
     return result;
   }
@@ -129,7 +129,7 @@ public final class Log {
   public String toString() {
     return "Log{" +
             "index=" + index +
-            ", timestamp=" + timestamp +
+            ", nanoTimestamp=" + nanoTimestamp +
             ", type=" + type +
             ", content=" + Arrays.toString(content) +
             '}';

@@ -129,13 +129,15 @@ public class JacksonLogBufferTest {
     assertThat(a.size(), is(0));
     assertThat(b.size(), is(0));
 
+    a = logBuffer.selectPeriod(A.class, Long.MAX_VALUE - 100000, Long.MAX_VALUE);
+
     // select a1 exactly
-    a = logBuffer.selectPeriod(A.class, al1.getTimestamp(), al1.getTimestamp());
+    a = logBuffer.selectPeriod(A.class, al1.getNanoTimestamp(), al1.getNanoTimestamp());
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
     // select a2 exactly
-    a = logBuffer.selectPeriod(A.class, al2.getTimestamp(), al2.getTimestamp());
+    a = logBuffer.selectPeriod(A.class, al2.getNanoTimestamp(), al2.getNanoTimestamp());
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a2));
 
@@ -156,12 +158,12 @@ public class JacksonLogBufferTest {
     assertThat(a.get(1), is(a2));
 
     // select b1 exactly
-    b = logBuffer.selectPeriod(B.class, bl1.getTimestamp(), bl1.getTimestamp());
+    b = logBuffer.selectPeriod(B.class, bl1.getNanoTimestamp(), bl1.getNanoTimestamp());
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
     // select b2 exactly
-    b = logBuffer.selectPeriod(B.class, bl2.getTimestamp(), bl2.getTimestamp());
+    b = logBuffer.selectPeriod(B.class, bl2.getNanoTimestamp(), bl2.getNanoTimestamp());
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b2));
 
@@ -288,8 +290,15 @@ public class JacksonLogBufferTest {
     assertThat(result.get(3), is(a2));
   }
 
+  @Test
+  public void write_raw_logs_to_object_serializer() throws IOException {
+    logBuffer.write(new byte[] {1});
+    List<A> list = logBuffer.selectPeriod(A.class, 0, System.nanoTime());
+    assertThat(list.size(), is(0));
+  }
+
   long timestamp() throws InterruptedException {
-    long time = System.currentTimeMillis();
+    long time = System.nanoTime();
     Thread.sleep(10);
     return time;
   }
