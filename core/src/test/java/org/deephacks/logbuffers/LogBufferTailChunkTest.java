@@ -12,6 +12,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertThat;
+
 public class LogBufferTailChunkTest {
   static String dir = "/tmp/LogBufferTailChunkTest";
   static AtomicLong counter = new AtomicLong();
@@ -27,8 +30,8 @@ public class LogBufferTailChunkTest {
    */
   @Test
   public void slow_batch_reader() throws Exception {
-    final long chunkMs = 500;
-    final int roundMs = 500;
+    final long chunkMs = 300;
+    final int roundMs = 300;
     final long writeTimeMs = TimeUnit.SECONDS.toMillis(3);
     final LogBuffer buffer = new Builder().basePath(dir).addSerializer(new JacksonSerializer()).build();
     final CountDownLatch latch = new CountDownLatch(1);
@@ -39,25 +42,28 @@ public class LogBufferTailChunkTest {
     TailPeriod tail = new TailPeriod();
     buffer.forwardTimeChunksWithFixedDelay(tail, chunkMs, roundMs, TimeUnit.MILLISECONDS);
     latch.await();
-    System.out.println("Writer done. size " + Writers.writes.size() + " idx " + Writers.writes.lastKey());
-    buffer.close();
+    System.out.println("Writer done. size " + writers.writes.size() + " idx " + writers.writes.lastKey());
     final long now = System.currentTimeMillis();
-    while (TailPeriod.reads.size() != Writers.writes.size()) {
+    while (tail.reads.size() != writers.writes.size()) {
       Thread.sleep(500);
       if ((System.currentTimeMillis() - now) >  TimeUnit.SECONDS.toMillis(10)) {
         throw new RuntimeException("Readers took too long. Maybe this machine is slow, but probably a bug.");
       }
     }
+    // wait a bit to be certain that tail doesn't move past the write index
+    Thread.sleep(roundMs);
+    assertThat(tail.reads.size(), is(writers.writes.size()));
     buffer.cancel(TailPeriod.class);
-    System.out.println("Readers... size "+ TailPeriod.reads.size() + " idx " + TailPeriod.reads.lastKey());
-    System.out.println("SUCCESS: "+ TailPeriod.reads.size());
+    System.out.println("Readers... size "+ tail.reads.size() + " idx " + tail.reads.lastKey());
+    System.out.println("SUCCESS: "+ tail.reads.size());
   }
 
   public static class TailPeriod implements Tail<A> {
     int failures = 3;
-    static ConcurrentSkipListMap<Long, A> reads = new ConcurrentSkipListMap<>();
+    ConcurrentSkipListMap<Long, A> reads = new ConcurrentSkipListMap<>();
     @Override
     public void process(Logs<A> logs) {
+      // simulate random errors in order to test fail-safety
       if (new Random().nextBoolean() && failures-- > 0) {
         throw new RuntimeException("random failure");
       }
@@ -66,7 +72,6 @@ public class LogBufferTailChunkTest {
       }
       for (A a : logs.getObjects()) {
         if (reads.putIfAbsent(logs.getLog(a).getIndex(), a) != null) {
-          System.err.println("Duplicate read index!");
           throw new RuntimeException("Duplicate read index!");
         }
       }
@@ -76,7 +81,7 @@ public class LogBufferTailChunkTest {
   public static class Writers extends Thread {
     long stopTime;
     LogBuffer buffer;
-    static ConcurrentSkipListMap<Long, A> writes = new ConcurrentSkipListMap<>();
+    ConcurrentSkipListMap<Long, A> writes = new ConcurrentSkipListMap<>();
     CountDownLatch latch;
     public Writers(long writeTimeMs, LogBuffer buffer, CountDownLatch latch) {
       this.stopTime = System.currentTimeMillis() + writeTimeMs;
