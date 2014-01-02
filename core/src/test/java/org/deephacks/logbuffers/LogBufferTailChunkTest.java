@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 public class LogBufferTailChunkTest {
   static String dir = "/tmp/LogBufferTailChunkTest";
@@ -69,6 +69,7 @@ public class LogBufferTailChunkTest {
       if (new Random().nextBoolean() && failures-- > 0) {
         throw new RuntimeException("random failure");
       }
+
       if (!logs.isEmpty()) {
         System.out.println("Read index: " + logs.getFirstLog().getIndex() + " ... " + logs.getLastLog().getIndex() + " size: " + reads.size());
       }

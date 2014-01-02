@@ -15,10 +15,13 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
   private long chunkMs;
   public static SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss:SSS");
   private final Logger logger;
+  private Optional<Log> moreWork;
+
   LogBufferTailChunk(LogBuffer logBuffer, Tail<T> tail, long chunkMs) throws IOException {
     super(logBuffer, tail);
     this.chunkMs = chunkMs;
     this.logger = Logger.getLogger(getClass().getName());
+    this.moreWork = Optional.absent();
   }
 
   @Override
@@ -27,6 +30,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     // writer index is so tail can speed up if backlog is too big.
     Optional<Log> latestWrite = logBuffer.getLatestWrite();
     if (!latestWrite.isPresent()) {
+      moreWork = Optional.absent();
       return new ForwardResult();
     }
 
@@ -34,6 +38,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     long currentReadIndex = getReadIndex();
     Optional<Log> currentLog = logBuffer.get(currentReadIndex);
     if (!currentLog.isPresent()) {
+      moreWork = Optional.absent();
       return new ForwardResult();
     }
 
@@ -43,12 +48,19 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     // do not process ahead of time, meaning tail will not try process
     // logs until the chunkMs have passed since the present.
     if (fixedTo > System.currentTimeMillis()) {
+      moreWork = Optional.absent();
       return new ForwardResult();
     }
-    Logs<T> logs = logBuffer.selectPeriod(type, fixedFrom, fixedTo);
-    logger.log(Level.FINE, format.format(new Date(fixedFrom)) + " " + format.format(new Date(fixedTo)) + " " + logs.size());
+    Logs<T> logs;
+    if (moreWork.isPresent()) {
+      logs = logBuffer.selectForwardPeriod(type, moreWork.get().getIndex(), fixedFrom, fixedTo);
+    } else {
+      logs = logBuffer.selectPeriod(type, fixedFrom, fixedTo);
+    }
+    logger.log(Level.FINE, format.format(new Date(fixedFrom)) + " " + format.format(new Date(fixedTo)));
     // don't call tail if there are no logs
     if (logs.isEmpty()) {
+      moreWork = Optional.absent();
       return new ForwardResult();
     }
     // prepare the next read index BEFORE we hand over logs to tail
@@ -56,10 +68,12 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     long lastReadIndex = lastRead.getIndex();
     // prepare result
     ForwardResult result = new ForwardResult();
+    moreWork = Optional.absent();
     if (lastRead.getTimestamp() < latestWrite.get().getTimestamp()) {
       // alter the result to indicate that there are already more logs
       // to process after this round have been executed. Hence we can
       // act quickly and process these as fast as possible, if needed.
+      this.moreWork = Optional.fromNullable(lastRead);
       result = new ForwardResult(false);
     }
     try {
@@ -70,6 +84,8 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       // only write/persist last read index if tail was successful
       writeReadIndex(lastReadIndex + 1);
     } catch (Exception e) {
+      this.moreWork = Optional.absent();
+      result = new ForwardResult();
       System.err.println(e.getMessage());
     }
     return result;

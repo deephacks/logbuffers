@@ -190,11 +190,24 @@ public final class LogBuffer {
    * @throws IOException
    */
   public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
+    return selectPeriod(getWriteIndex() - 1, fromTimeMs, toTimeMs);
+  }
+
+  /**
+   * Select a list of logs based on the given period of time with respect
+   * to the timestamp of each log.
+   *
+   * @param fromTimeMs from (inclusive)
+   * @param toTimeMs to (inclusive)
+   * @param fromIndex from what index to start scanning
+   * @return list of matching logs
+   * @throws IOException
+   */
+  public List<Log> selectPeriod(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     LinkedList<Log> messages = new LinkedList<>();
     synchronized (readLock) {
-      long index = getWriteIndex() - 1;
-      for (long i = index; i > -1; i--) {
+      for (long i = fromIndex; i > -1; i--) {
         Optional<Long> optional = peekTimestamp(i);
         if (!optional.isPresent()) {
           continue;
@@ -213,6 +226,29 @@ public final class LogBuffer {
     }
   }
 
+  public List<Log> selectForwardPeriod(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
+    Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
+    LinkedList<Log> messages = new LinkedList<>();
+    long writeIndex = getWriteIndex();
+    synchronized (readLock) {
+      for (long i = fromIndex; i < writeIndex; i++) {
+        Optional<Long> optional = peekTimestamp(i);
+        if (!optional.isPresent()) {
+          continue;
+        }
+        long timestamp = optional.get();
+        if (timestamp >= fromTimeMs && timestamp <= toTimeMs) {
+          messages.addLast(get(i).get());
+        }
+        if (timestamp > toTimeMs) {
+          // moved past fromTime and since all timestamps are sequential
+          // there is no more data to find at this point.
+          break;
+        }
+      }
+      return messages;
+    }
+  }
 
   /**
    * Selects logs only of a specific type, all other types are filtered out.
@@ -252,6 +288,11 @@ public final class LogBuffer {
    */
   public <T> Logs<T> selectPeriod(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
     final List<Log> logs = selectPeriod(fromTimeMs, toTimeMs);
+    return convert(type, logs);
+  }
+
+  public <T> Logs<T> selectForwardPeriod(Class<T> type, long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
+    final List<Log> logs = selectForwardPeriod(fromIndex, fromTimeMs, toTimeMs);
     return convert(type, logs);
   }
 

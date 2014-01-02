@@ -34,7 +34,6 @@ public class LogBufferTailConcurrencyTest {
 
   @Test
   public void test_concurrency() throws IOException, InterruptedException {
-
     ExecutorService executor = Executors.newCachedThreadPool();
     Stopwatch stopwatch = new Stopwatch().start();
     final CountDownLatch latch = new CountDownLatch(numLogs);
