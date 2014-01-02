@@ -34,11 +34,22 @@ public class Logs<T> {
   }
 
   /**
-   * @param object to fetch the raw log for
-   * @return log the contain meta data such as index, timestamp etc.
+   * @return the first object
    */
-  public Log getLog(T object) {
-    return logs.get(object);
+  public T getFirst() {
+    return getObjects().getFirst();
+  }
+
+  public Log getFirstLog() {
+    return getLog(getObjects().getFirst());
+  }
+
+
+  /**
+   * @return the last object
+   */
+  public T getLast() {
+    return getObjects().getLast();
   }
 
   /**
@@ -49,10 +60,24 @@ public class Logs<T> {
     return logs.get(last);
   }
 
+
+  /**
+   * @param object to fetch the raw log for
+   * @return log the contain meta data such as index, timestamp etc.
+   */
+  public Log getLog(T object) {
+    return logs.get(object);
+  }
+
+
   /**
    * @return number of logs
    */
   public int size() {
     return logs.size();
+  }
+
+  public boolean isEmpty() {
+    return logs.isEmpty();
   }
 }

@@ -13,11 +13,11 @@ import java.util.UUID;
 
 public class LogUtil {
   public static SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss:SSS");
-  public static List<Log> randomLogs = new ArrayList<>();
+  public static List<byte[]> randomLogs = new ArrayList<>();
 
   static {
     for (int i = 0; i < 1000; i++) {
-      randomLogs.add(randomLog(i));
+      randomLogs.add(randomLog());
     }
   }
 
@@ -29,11 +29,11 @@ public class LogUtil {
     }
   }
 
-  public static Log randomLog(long timestamp) {
-    return new Log(Log.DEFAULT_TYPE, UUID.randomUUID().toString().getBytes(Charsets.UTF_8), timestamp, timestamp);
+  public static byte[] randomLog() {
+    return UUID.randomUUID().toString().getBytes(Charsets.UTF_8);
   }
 
-  public static Log randomCachedItem() {
+  public static byte[] randomCachedItem() {
     return randomLogs.get(Math.abs(new Random().nextInt()) % randomLogs.size());
   }
 

@@ -109,19 +109,19 @@ public class JacksonLogBufferTest {
 
   @Test
   public void test_write_read_period() throws Exception {
-    long t1 = nanoTimestamp();
+    long t1 = timestamp();
     Log al1 = logBuffer.write(a1);
 
-    long t2 = nanoTimestamp();
+    long t2 = timestamp();
     Log bl1 = logBuffer.write(b1);
 
-    long t3 = nanoTimestamp();
+    long t3 = timestamp();
     Log al2 = logBuffer.write(a2);
 
-    long t4 = nanoTimestamp();
+    long t4 = timestamp();
     Log bl2 = logBuffer.write(b2);
 
-    long t5 = nanoTimestamp();
+    long t5 = timestamp();
 
     // check select outside index
     List<A> a = logBuffer.select(A.class, 100, 100).getObjects();
@@ -298,7 +298,7 @@ public class JacksonLogBufferTest {
     assertThat(logs.size(), is(0));
   }
 
-  long nanoTimestamp() throws InterruptedException {
+  long timestamp() throws InterruptedException {
     long time = System.currentTimeMillis();
     Thread.sleep(10);
     return time;

@@ -5,18 +5,20 @@ import com.google.common.base.Preconditions;
 import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.ExcerptTailer;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 
 /**
  * A raw log.
  */
 public final class Log {
-
+  public static SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss:SSS");
   /** default type if no type is specified */
   public static long DEFAULT_TYPE = 1;
 
   /** indicating the binary content format to serializers */
-  private long type = DEFAULT_TYPE;
+  private final long type;
 
   /** raw log content */
   private final byte[] content;
@@ -25,9 +27,10 @@ public final class Log {
   private final long timestamp;
 
   /** unique sequential index number (position/offset) */
-  private long index = -1;
+  private final long index;
 
   Log(Long type, byte[] content, long timestamp, long index) {
+    Preconditions.checkArgument(type != 0, "Type cannot be 0");
     this.type = type;
     this.content = content;
     this.timestamp = timestamp;
@@ -35,18 +38,15 @@ public final class Log {
   }
 
   Log(byte[] content) {
-    this(DEFAULT_TYPE, content, System.currentTimeMillis(), -1);
+    this(DEFAULT_TYPE, content, System.currentTimeMillis(), DEFAULT_TYPE);
   }
 
   Log(long type, byte[] content) {
-    this(type, content, System.currentTimeMillis(), -1);
+    this(type, content, System.currentTimeMillis(), DEFAULT_TYPE);
   }
 
   Log(Log log, long index) {
-    this.timestamp = log.timestamp;
-    this.content = log.content;
-    this.type = log.type;
-    this.index = index;
+    this(log.getType(), log.getContent(), log.getTimestamp(), index);
   }
 
   public long getType() {
@@ -82,27 +82,41 @@ public final class Log {
     return 8 + 8 + 4 + content.length;
   }
 
-  void write(ExcerptAppender appender) {
+  long write(ExcerptAppender appender) {
+    long index = appender.index();
     appender.startExcerpt(getLength());
     appender.writeLong(getTimestamp());
     appender.writeLong(type);
     appender.writeInt(content.length);
     appender.write(content);
     appender.finish();
+    return index;
   }
 
   static Optional<Log> read(ExcerptTailer tailer, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
-    if (!tailer.index(index)) {
-      return Optional.absent();
-    }
-    long nanoTimestamp = tailer.readLong();
+    tailer.index(index);
+    long timestamp = tailer.readLong();
     long type = tailer.readLong();
     int messageSize = tailer.readInt();
     byte[] message = new byte[messageSize];
     tailer.read(message);
-    return Optional.fromNullable(new Log(type, message, nanoTimestamp, index));
+    if (type == 0) {
+      return Optional.absent();
+    }
+    return Optional.fromNullable(new Log(type, message, timestamp, index));
   }
+
+  static Optional<Long> peekTimestamp(ExcerptTailer tailer, long index) {
+    Preconditions.checkArgument(index >= 0, "index must be positive");
+    tailer.index(index);
+    long timestamp = tailer.readLong();
+    if (timestamp == 0) {
+      return Optional.absent();
+    }
+    return Optional.fromNullable(timestamp);
+  }
+
 
   @Override
   public boolean equals(Object o) {
@@ -126,6 +140,14 @@ public final class Log {
     result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
     result = 31 * result + (int) (index ^ (index >>> 32));
     return result;
+  }
+
+  public String getMetaDataAsString() {
+    return "Log{" +
+            "index=" + index +
+            ", timestamp=" + format.format(new Date(timestamp))  +
+            ", type=" + type +
+            '}';
   }
 
   @Override

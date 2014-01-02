@@ -17,11 +17,10 @@ import static org.junit.Assert.*;
 public class LogBufferTest {
   LogBuffer logBuffer;
   TailLog tail;
-  Log log1 = LogUtil.randomLog(1);
-  Log log2 = LogUtil.randomLog(2);
-  Log log3 = LogUtil.randomLog(3);
-  Log log4 = LogUtil.randomLog(4);
-  Log log5 = LogUtil.randomLog(5);
+  byte[] c1 = LogUtil.randomLog();
+  byte[] c2 = LogUtil.randomLog();
+  byte[] c3 = LogUtil.randomLog();
+  byte[] c4 = LogUtil.randomLog();
 
   @Before
   public void before() throws IOException {
@@ -38,114 +37,132 @@ public class LogBufferTest {
   @Test
   public void test_write_read() throws IOException {
     // one log
-    log1 = logBuffer.write(log1);
+    Log log1 = logBuffer.write(c1);
+    System.out.println(log1.getIndex());
     List<Log> select = logBuffer.select(0);
-    assertThat(select.get(0), is(log1));
+    assertArrayEquals(select.get(0).getContent(), log1.getContent());
 
     // write another
-    log2 = logBuffer.write(log2);
+    Log log2 = logBuffer.write(c2);
+    System.out.println(log2.getIndex());
     select = logBuffer.select(0);
     assertThat(select.size(), is(2));
-    assertThat(select.get(0), is(log1));
-    assertThat(select.get(1), is(log2));
+    assertArrayEquals(select.get(0).getContent(), log1.getContent());
+    assertArrayEquals(select.get(1).getContent(), log2.getContent());
+
+    assertArrayEquals(logBuffer.get(log1.getIndex()).get().getContent(), log1.getContent());
+    assertArrayEquals(logBuffer.get(log2.getIndex()).get().getContent(), log2.getContent());
 
     // forward index past first log
     select = logBuffer.select(1);
     assertThat(select.size(), is(1));
-    assertThat(select.get(0), is(log2));
+    assertArrayEquals(select.get(0).getContent(), log2.getContent());
   }
 
   @Test
-  public void test_write_read_period() throws IOException {
-    // one log
-    log1 = logBuffer.write(log1);
-    log2 = logBuffer.write(log2);
-    log3 = logBuffer.write(log3);
-    log4 = logBuffer.write(log4);
-    log5 = logBuffer.write(log5);
+  public void test_write_read_period() throws Exception {
+    long t1 = timestamp();
+    Log log1 = logBuffer.write(c1);
 
-    List<Log> select = logBuffer.selectPeriod(0, 0);
+    long t2 = timestamp();
+    Log log2 = logBuffer.write(c2);
+
+    long t3 = timestamp();
+    Log log3 = logBuffer.write(c3);
+
+    long t4 = timestamp();
+    Log log4 = logBuffer.write(c4);
+
+    long t5 = timestamp();
+
+    List<Log> select = logBuffer.selectPeriod(0, t1);
     assertThat(select.size(), is(0));
 
-    select = logBuffer.selectPeriod(1, 1);
+    select = logBuffer.selectPeriod(t1, t2);
     assertThat(select.size(), is(1));
-    assertThat(select.get(0), is(log1));
+    assertArrayEquals(select.get(0).getContent(), log1.getContent());
 
-    select = logBuffer.selectPeriod(2, 2);
+    select = logBuffer.selectPeriod(t2, t3);
     assertThat(select.size(), is(1));
-    assertThat(select.get(0), is(log2));
+    assertArrayEquals(select.get(0).getContent(), log2.getContent());
 
-    select = logBuffer.selectPeriod(3, 3);
+    select = logBuffer.selectPeriod(t3, t4);
     assertThat(select.size(), is(1));
-    assertThat(select.get(0), is(log3));
+    assertArrayEquals(select.get(0).getContent(), log3.getContent());
 
-    select = logBuffer.selectPeriod(4, 4);
+    select = logBuffer.selectPeriod(t4, t5);
     assertThat(select.size(), is(1));
-    assertThat(select.get(0), is(log4));
+    assertArrayEquals(select.get(0).getContent(), log4.getContent());
 
-    select = logBuffer.selectPeriod(5, 5);
-    assertThat(select.size(), is(1));
-    assertThat(select.get(0), is(log5));
-
-    select = logBuffer.selectPeriod(6, System.nanoTime());
+    select = logBuffer.selectPeriod(t5, System.currentTimeMillis());
     assertThat(select.size(), is(0));
 
-    select = logBuffer.selectPeriod(3, 5);
-    assertThat(select.size(), is(3));
-    assertThat(select.get(0), is(log3));
-    assertThat(select.get(1), is(log4));
-    assertThat(select.get(2), is(log5));
+    select = logBuffer.selectPeriod(t2, t4);
+    assertThat(select.size(), is(2));
+    assertArrayEquals(select.get(0).getContent(), log2.getContent());
+    assertArrayEquals(select.get(1).getContent(), log3.getContent());
+
   }
 
 
   @Test
   public void test_manual_forward() throws IOException {
+
     // one log
-    log1 = logBuffer.write(log1);
+    Log log1 = logBuffer.write(c1);
     logBuffer.forward(tail);
     assertThat(tail.logs.size(), is(1));
-    assertThat(tail.logs.get(0), is(log1));
+    assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());
 
     // write another
-    log2 = logBuffer.write(log2);
+    Log log2 = logBuffer.write(c2);
     logBuffer.forward(tail);
     assertThat(tail.logs.size(), is(2));
-    assertThat(tail.logs.get(1), is(log2));
+    assertArrayEquals(tail.logs.get(1).getContent(), log2.getContent());
 
     // write multiple
-    log1 = logBuffer.write(log1);
-    log2 = logBuffer.write(log2);
+    log1 = logBuffer.write(c1);
+    log2 = logBuffer.write(c2);
     logBuffer.forward(tail);
     assertThat(tail.logs.size(), is(4));
-    assertThat(tail.logs.get(2), is(log1));
-    assertThat(tail.logs.get(3), is(log2));
+    assertArrayEquals(tail.logs.get(2).getContent(), log1.getContent());
+    assertArrayEquals(tail.logs.get(3).getContent(), log2.getContent());
   }
 
 
   @Test
   public void test_scheduled_forward() throws Exception {
+
     logBuffer.forwardWithFixedDelay(tail, 500, TimeUnit.MILLISECONDS);
     // one log
-    log1 = logBuffer.write(log1);
+    Log log1 = logBuffer.write(c1);
     Thread.sleep(600);
     assertThat(tail.logs.size(), is(1));
-    assertThat(tail.logs.get(0), is(log1));
+    assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());
 
     // write another
-    log2 = logBuffer.write(log2);
+    Log log2 = logBuffer.write(c2);
     Thread.sleep(600);
 
     assertThat(tail.logs.size(), is(2));
-    assertThat(tail.logs.get(1), is(log2));
+    assertArrayEquals(tail.logs.get(1).getContent(), log2.getContent());
 
     // write multiple
-    log1 = logBuffer.write(log1);
-    log2 = logBuffer.write(log2);
+    log1 = logBuffer.write(c1);
+    log2 = logBuffer.write(c2);
     Thread.sleep(600);
 
     assertThat(tail.logs.size(), is(4));
-    assertThat(tail.logs.get(2), is(log1));
-    assertThat(tail.logs.get(3), is(log2));
+    assertArrayEquals(tail.logs.get(2).getContent(), log1.getContent());
+    assertArrayEquals(tail.logs.get(3).getContent(), log2.getContent());
+
+  }
+
+  long timestamp() throws InterruptedException {
+    Thread.sleep(10);
+    long time = System.currentTimeMillis();
+    Thread.sleep(10);
+    return time;
   }
 
   public static class TailLog implements Tail<Log> {

@@ -5,7 +5,7 @@ import com.google.common.base.Preconditions;
 import net.openhft.chronicle.ChronicleConfig;
 import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.ExcerptTailer;
-import net.openhft.chronicle.RollingChronicle;
+import net.openhft.chronicle.IndexedChronicle;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -32,6 +33,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * does not need to care about.
  */
 public final class LogBuffer {
+
+  private final Logger logger;
+
   /** system tmp dir*/
   private static final String TMP_DIR = System.getProperty("java.io.tmpdir");
 
@@ -41,11 +45,8 @@ public final class LogBuffer {
   /** optional executor used only by scheduled tailing */
   private ScheduledExecutorService cachedExecutor;
 
-  /** the current write writeIndex */
-  private Index writeIndex;
-
-  /** rolling chronicle, log buffer files are never removed ATM  */
-  private RollingChronicle rollingChronicle;
+  /** this should be rolling, but there are bugs. Change later to VanillaChronicle in later versions */
+  private IndexedChronicle rollingChronicle;
 
   /** log writer */
   private final ExcerptAppender excerptAppender;
@@ -56,9 +57,6 @@ public final class LogBuffer {
   /** lock used when reading */
   private final Object readLock = new Object();
 
-  /** locked used when writing */
-  private final Object writeLock = new Object();
-
   /** path where log buffer files are stored */
   private String basePath;
 
@@ -68,8 +66,8 @@ public final class LogBuffer {
 
   private LogBuffer(Builder builder) throws IOException {
     this.basePath = builder.basePath.or(DEFAULT_BASE_PATH);
-    this.writeIndex = new Index(basePath + "/writer");
-    this.rollingChronicle = new RollingChronicle(basePath, builder.config);
+    this.logger = Logger.getLogger(LogBuffer.class.getName() + "." + checkNotNull(basePath + "/writer"));
+    this.rollingChronicle = new IndexedChronicle(basePath + "/data", builder.config);
     this.excerptAppender = rollingChronicle.createAppender();
     this.excerptTailer = rollingChronicle.createTailer();
     this.serializers = builder.serializers;
@@ -83,29 +81,13 @@ public final class LogBuffer {
   }
 
   /**
-   * Write a new raw binary log.
-   *
-   * @param log data.
-   * @throws IOException
-   */
-  public Log write(byte[] log) throws IOException {
-    return write(new Log(log));
-  }
-
-  /**
    * Write a new raw log object.
    *
-   * @param log raw object log.
+   * @param content raw content.
    * @throws IOException
    */
-  Log write(Log log) throws IOException {
-    // single writer is required in order append to file since there is
-    // only one file written to at a given time (also generating unique
-    // and sequential indexes).
-    synchronized (excerptAppender) {
-      log.write(excerptAppender);
-      return new Log(log, writeIndex.getAndIncrement());
-    }
+  public Log write(byte[] content) throws IOException {
+    return internalWrite(content, Log.DEFAULT_TYPE);
   }
 
   /**
@@ -119,8 +101,18 @@ public final class LogBuffer {
     Class<?> cls = object.getClass();
     ObjectLogSerializer serializer = serializers.getSerializer(cls);
     byte[] content = serializer.serialize(object);
-    Log log = new Log(serializers.getType(cls), content);
-    return write(log);
+    return internalWrite(content, serializers.getType(cls));
+  }
+
+  private Log internalWrite(byte[] content, long type) throws IOException {
+    // single writer is required in order append to file since there is
+    // only one file written to at a given time. Also for generating unique
+    // sequential indexes and sequential timestamps.
+    synchronized (excerptAppender) {
+      Log log = new Log(type, content);
+      long index = log.write(excerptAppender);
+      return new Log(log, index);
+    }
   }
 
   /**
@@ -132,7 +124,7 @@ public final class LogBuffer {
    * @throws IOException
    */
   public List<Log> select(long fromIndex) throws IOException {
-    long writeIdx = writeIndex.getIndex();
+    long writeIdx = getWriteIndex();
     return select(fromIndex, writeIdx);
   }
 
@@ -142,8 +134,18 @@ public final class LogBuffer {
     }
   }
 
+  Optional<Long> peekTimestamp(long index) throws IOException {
+    synchronized (excerptTailer) {
+      return Log.peekTimestamp(excerptTailer, index);
+    }
+  }
+
   Optional<Log> getLatestWrite() throws IOException {
-    return get(writeIndex.getIndex() - 1);
+    long index = getWriteIndex();
+    if (index == 0) {
+      return get(0);
+    }
+    return get(index - 1);
   }
 
   /**
@@ -159,7 +161,7 @@ public final class LogBuffer {
     Preconditions.checkArgument(fromIndex <= toIndex, "from must be less than to");
     synchronized (readLock) {
       List<Log> messages = new ArrayList<>();
-      long maxIndex = writeIndex.getIndex();
+      long maxIndex = getWriteIndex();
       if (toIndex > maxIndex) {
         toIndex = maxIndex;
       }
@@ -186,18 +188,21 @@ public final class LogBuffer {
    */
   public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
-    long writeIndex = this.writeIndex.getIndex();
+    return internalSelectPeriod(getWriteIndex() - 1, fromTimeMs, toTimeMs);
+  }
+
+  List<Log> internalSelectPeriod(long startIndex, long fromTimeMs, long toTimeMs) throws IOException {
+    Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     LinkedList<Log> messages = new LinkedList<>();
-    long read = writeIndex - 1;
     synchronized (readLock) {
-      for (long i = read; i > -1; i--) {
-        Optional<Log> optional = get(i);
+      for (long i = startIndex; i > -1; i--) {
+        Optional<Long> optional = peekTimestamp(i);
         if (!optional.isPresent()) {
           continue;
         }
-        Log log = optional.get();
-        if (log.getTimestamp() >= fromTimeMs && log.getTimestamp() <= toTimeMs){
-          messages.addFirst(log);
+        long timestamp = optional.get();
+        if (timestamp >= fromTimeMs && timestamp <= toTimeMs) {
+          messages.addFirst(get(i).get());
         }
       }
       return messages;
@@ -250,6 +255,9 @@ public final class LogBuffer {
     for (Log log : logs) {
       if (log.getType() != Log.DEFAULT_TYPE) {
         ObjectLogSerializer serializer = serializers.getSerializer(log.getType());
+        if (serializer == null) {
+          throw new IllegalStateException("No serializer found for type " + log.getMetaDataAsString());
+        }
         Class<?> cls = serializer.getMapping().get(log.getType());
         if (type.isAssignableFrom(cls)) {
           T object = (T) serializer.deserialize(log.getContent(), log.getType());
@@ -284,7 +292,6 @@ public final class LogBuffer {
   public synchronized void close() throws IOException {
     synchronized (excerptAppender) {
       excerptAppender.close();
-      writeIndex.close();
       for (Class<?> cls : tails.keySet()) {
         LogBufferTail<?> logBufferTail = tails.remove(cls);
         logBufferTail.cancel(true);
@@ -303,7 +310,9 @@ public final class LogBuffer {
    * @throws IOException
    */
   public long getWriteIndex() throws IOException {
-    return writeIndex.getIndex();
+    synchronized (excerptAppender) {
+      return excerptAppender.index();
+    }
   }
 
   /**
@@ -383,12 +392,12 @@ public final class LogBuffer {
   }
 
   public static class Builder {
-    private ChronicleConfig config = ChronicleConfig.SMALL.clone();
+    private ChronicleConfig config = ChronicleConfig.MEDIUM.clone();
     private Optional<String> basePath = Optional.absent();
     private Serializers serializers = new Serializers();
 
     public Builder() {
-      config.indexFileExcerpts(Short.MAX_VALUE);
+      config.indexFileExcerpts(Short.MAX_VALUE + 1000);
     }
 
     public Builder basePath(String basePath) {

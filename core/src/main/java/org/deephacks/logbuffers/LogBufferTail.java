@@ -97,8 +97,10 @@ class LogBufferTail<T> {
   /**
    * @return the current read index.
    */
-  synchronized long getReadIndex() throws IOException {
-    return readIndex.getIndex();
+  long getReadIndex() throws IOException {
+    synchronized (readIndex) {
+      return readIndex.getIndex();
+    }
   }
 
   /**
@@ -109,8 +111,6 @@ class LogBufferTail<T> {
       readIndex.close();
     }
   }
-
-
 
   private static final class TailSchedule implements Runnable {
     private LogBufferTail tailer;
@@ -123,11 +123,10 @@ class LogBufferTail<T> {
     public void run() {
       try {
         ForwardResult forwardResult = tailer.forward();
-        if (!forwardResult.isFinished()) {
-         tailer.forwardNow();
+        while (!forwardResult.isFinished()) {
+          forwardResult = tailer.forward();
         }
-      } catch (Exception e) {
-        System.err.println(e.getMessage());
+      } catch (Throwable e) {
         // ignore for now
       }
     }
