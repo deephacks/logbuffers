@@ -41,8 +41,12 @@ public class LogBufferTailChunkTest {
     latch.await();
     System.out.println("Writer done. size " + Writers.writes.size() + " idx " + Writers.writes.lastKey());
     buffer.close();
+    final long now = System.currentTimeMillis();
     while (TailPeriod.reads.size() != Writers.writes.size()) {
       Thread.sleep(500);
+      if ((System.currentTimeMillis() - now) >  TimeUnit.SECONDS.toMillis(10)) {
+        throw new RuntimeException("Readers took too long. Maybe this machine is slow, but probably a bug.");
+      }
     }
     buffer.cancel(TailPeriod.class);
     System.out.println("Readers... size "+ TailPeriod.reads.size() + " idx " + TailPeriod.reads.lastKey());
@@ -54,8 +58,7 @@ public class LogBufferTailChunkTest {
     static ConcurrentSkipListMap<Long, A> reads = new ConcurrentSkipListMap<>();
     @Override
     public void process(Logs<A> logs) {
-      if (failures > 0 && new Random().nextBoolean()) {
-        failures--;
+      if (new Random().nextBoolean() && failures-- > 0) {
         throw new RuntimeException("random failure");
       }
       if (!logs.isEmpty()) {
@@ -83,6 +86,7 @@ public class LogBufferTailChunkTest {
 
     @Override
     public void run() {
+      // enough to produce at least 100.000 writes per seconds
       int numThreads = Runtime.getRuntime().availableProcessors() * 2;
       final CountDownLatch threadWait = new CountDownLatch(numThreads);
       for (int i = 0; i < numThreads; i++) {
