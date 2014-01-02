@@ -130,56 +130,56 @@ public class JacksonLogBufferTest {
     assertThat(a.size(), is(0));
     assertThat(b.size(), is(0));
 
-    a = logBuffer.selectPeriod(A.class, Long.MAX_VALUE - 100000, Long.MAX_VALUE).getObjects();
+    a = logBuffer.selectBackward(A.class, Long.MAX_VALUE - 100000, Long.MAX_VALUE).getObjects();
 
     // select a1 exactly
-    a = logBuffer.selectPeriod(A.class, al1.getTimestamp(), al1.getTimestamp()).getObjects();
+    a = logBuffer.selectBackward(A.class, al1.getTimestamp(), al1.getTimestamp()).getObjects();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
     // select a2 exactly
-    a = logBuffer.selectPeriod(A.class, al2.getTimestamp(), al2.getTimestamp()).getObjects();
+    a = logBuffer.selectBackward(A.class, al2.getTimestamp(), al2.getTimestamp()).getObjects();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a2));
 
     // A selecting (a1) b1 a2 b2
-    a = logBuffer.selectPeriod(A.class, t1, t3).getObjects();
+    a = logBuffer.selectBackward(A.class, t1, t3).getObjects();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
     // A selecting (a1 b1) a2 b2
-    a = logBuffer.selectPeriod(A.class, t1, t3).getObjects();
+    a = logBuffer.selectBackward(A.class, t1, t3).getObjects();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
     // A selecting (a1 b1 a2 b2)
-    a = logBuffer.selectPeriod(A.class, t1, t5).getObjects();
+    a = logBuffer.selectBackward(A.class, t1, t5).getObjects();
     assertThat(a.size(), is(2));
     assertThat(a.get(0), is(a1));
     assertThat(a.get(1), is(a2));
 
     // select b1 exactly
-    b = logBuffer.selectPeriod(B.class, bl1.getTimestamp(), bl1.getTimestamp()).getObjects();
+    b = logBuffer.selectBackward(B.class, bl1.getTimestamp(), bl1.getTimestamp()).getObjects();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
     // select b2 exactly
-    b = logBuffer.selectPeriod(B.class, bl2.getTimestamp(), bl2.getTimestamp()).getObjects();
+    b = logBuffer.selectBackward(B.class, bl2.getTimestamp(), bl2.getTimestamp()).getObjects();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b2));
 
     // B selecting a1 (b1) a2 b2
-    b = logBuffer.selectPeriod(B.class, t2, t3).getObjects();
+    b = logBuffer.selectBackward(B.class, t2, t3).getObjects();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
     // B selecting a1 (b1 a2) b2
-    b = logBuffer.selectPeriod(B.class, t2, t4).getObjects();
+    b = logBuffer.selectBackward(B.class, t2, t4).getObjects();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
     // B selecting (a1 b1 a2 b2)
-    b = logBuffer.selectPeriod(B.class, t1, t5).getObjects();
+    b = logBuffer.selectBackward(B.class, t1, t5).getObjects();
     assertThat(b.size(), is(2));
     assertThat(b.get(0), is(b1));
     assertThat(b.get(1), is(b2));
@@ -294,7 +294,7 @@ public class JacksonLogBufferTest {
   @Test
   public void write_raw_logs_to_object_serializer() throws IOException {
     logBuffer.write(new byte[] {1});
-    Logs<A> logs = logBuffer.selectPeriod(A.class, 0, System.currentTimeMillis());
+    Logs<A> logs = logBuffer.selectBackward(A.class, 0, System.currentTimeMillis());
     assertThat(logs.size(), is(0));
   }
 

@@ -189,13 +189,14 @@ public final class LogBuffer {
    * @return list of matching logs
    * @throws IOException
    */
-  public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
-    return selectPeriod(getWriteIndex() - 1, fromTimeMs, toTimeMs);
+  public List<Log> selectBackward(long fromTimeMs, long toTimeMs) throws IOException {
+    return selectBackward(getWriteIndex() - 1, fromTimeMs, toTimeMs);
   }
 
   /**
    * Select a list of logs based on the given period of time with respect
-   * to the timestamp of each log.
+   * to the timestamp of each log, start scanning at from index, going
+   * backwards in time.
    *
    * @param fromTimeMs from (inclusive)
    * @param toTimeMs to (inclusive)
@@ -203,7 +204,7 @@ public final class LogBuffer {
    * @return list of matching logs
    * @throws IOException
    */
-  public List<Log> selectPeriod(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
+  public List<Log> selectBackward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     LinkedList<Log> messages = new LinkedList<>();
     synchronized (readLock) {
@@ -226,7 +227,18 @@ public final class LogBuffer {
     }
   }
 
-  public List<Log> selectForwardPeriod(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
+  /**
+   * Select a list of logs based on the given period of time with respect
+   * to the timestamp of each log, start scanning at from index, going
+   * forwards in time.
+   *
+   * @param fromTimeMs from (inclusive)
+   * @param toTimeMs to (inclusive)
+   * @param fromIndex from what index to start scanning
+   * @return list of matching logs
+   * @throws IOException
+   */
+  public List<Log> selectForward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     LinkedList<Log> messages = new LinkedList<>();
     long writeIndex = getWriteIndex();
@@ -280,19 +292,22 @@ public final class LogBuffer {
    * Selects a specific type of logs only, all other types are filtered out, based on the
    * given period of time with respect to the timestamp of each log.
    *
-   * @param type the type of logs to be selected.
-   * @param fromTimeMs from (inclusive)
-   * @param toTimeMs to (inclusive)
-   * @return list of matching logs
-   * @throws IOException
+   * {@link #selectBackward(long, long, long)}
+   *
    */
-  public <T> Logs<T> selectPeriod(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
-    final List<Log> logs = selectPeriod(fromTimeMs, toTimeMs);
+  public <T> Logs<T> selectBackward(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
+    final List<Log> logs = selectBackward(fromTimeMs, toTimeMs);
     return convert(type, logs);
   }
 
-  public <T> Logs<T> selectForwardPeriod(Class<T> type, long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
-    final List<Log> logs = selectForwardPeriod(fromIndex, fromTimeMs, toTimeMs);
+  /**
+   * Selects a specific type of logs only, all other types are filtered out, based on the
+   * given period of time with respect to the timestamp of each log.
+   *
+   * {@link #selectForward(Class, long, long, long)}
+   */
+  public <T> Logs<T> selectForward(Class<T> type, long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
+    final List<Log> logs = selectForward(fromIndex, fromTimeMs, toTimeMs);
     return convert(type, logs);
   }
 

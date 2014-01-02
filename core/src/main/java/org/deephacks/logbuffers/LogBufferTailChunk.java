@@ -53,9 +53,9 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     }
     Logs<T> logs;
     if (moreWork.isPresent()) {
-      logs = logBuffer.selectForwardPeriod(type, moreWork.get().getIndex(), fixedFrom, fixedTo);
+      logs = logBuffer.selectForward(type, moreWork.get().getIndex(), fixedFrom, fixedTo);
     } else {
-      logs = logBuffer.selectPeriod(type, fixedFrom, fixedTo);
+      logs = logBuffer.selectBackward(type, fixedFrom, fixedTo);
     }
     logger.log(Level.FINE, format.format(new Date(fixedFrom)) + " " + format.format(new Date(fixedTo)));
     // don't call tail if there are no logs

@@ -75,29 +75,29 @@ public class LogBufferTest {
 
     long t5 = timestamp();
 
-    List<Log> select = logBuffer.selectPeriod(0, t1);
+    List<Log> select = logBuffer.selectBackward(0, t1);
     assertThat(select.size(), is(0));
 
-    select = logBuffer.selectPeriod(t1, t2);
+    select = logBuffer.selectBackward(t1, t2);
     assertThat(select.size(), is(1));
     assertArrayEquals(select.get(0).getContent(), log1.getContent());
 
-    select = logBuffer.selectPeriod(t2, t3);
+    select = logBuffer.selectBackward(t2, t3);
     assertThat(select.size(), is(1));
     assertArrayEquals(select.get(0).getContent(), log2.getContent());
 
-    select = logBuffer.selectPeriod(t3, t4);
+    select = logBuffer.selectBackward(t3, t4);
     assertThat(select.size(), is(1));
     assertArrayEquals(select.get(0).getContent(), log3.getContent());
 
-    select = logBuffer.selectPeriod(t4, t5);
+    select = logBuffer.selectBackward(t4, t5);
     assertThat(select.size(), is(1));
     assertArrayEquals(select.get(0).getContent(), log4.getContent());
 
-    select = logBuffer.selectPeriod(t5, System.currentTimeMillis());
+    select = logBuffer.selectBackward(t5, System.currentTimeMillis());
     assertThat(select.size(), is(0));
 
-    select = logBuffer.selectPeriod(t2, t4);
+    select = logBuffer.selectBackward(t2, t4);
     assertThat(select.size(), is(2));
     assertArrayEquals(select.get(0).getContent(), log2.getContent());
     assertArrayEquals(select.get(1).getContent(), log3.getContent());
