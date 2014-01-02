@@ -134,6 +134,9 @@ public final class LogBuffer {
     }
   }
 
+  /**
+   * Only reads the timestamp in order to avoid serialization overhead.
+   */
   Optional<Long> peekTimestamp(long index) throws IOException {
     synchronized (excerptTailer) {
       return Log.peekTimestamp(excerptTailer, index);
@@ -188,14 +191,10 @@ public final class LogBuffer {
    */
   public List<Log> selectPeriod(long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
-    return internalSelectPeriod(getWriteIndex() - 1, fromTimeMs, toTimeMs);
-  }
-
-  List<Log> internalSelectPeriod(long startIndex, long fromTimeMs, long toTimeMs) throws IOException {
-    Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     LinkedList<Log> messages = new LinkedList<>();
     synchronized (readLock) {
-      for (long i = startIndex; i > -1; i--) {
+      long index = getWriteIndex() - 1;
+      for (long i = index; i > -1; i--) {
         Optional<Long> optional = peekTimestamp(i);
         if (!optional.isPresent()) {
           continue;
@@ -204,10 +203,16 @@ public final class LogBuffer {
         if (timestamp >= fromTimeMs && timestamp <= toTimeMs) {
           messages.addFirst(get(i).get());
         }
+        if (timestamp < fromTimeMs) {
+          // moved past fromTime and since all timestamps are sequential
+          // there is no more data to find at this point.
+          break;
+        }
       }
       return messages;
     }
   }
+
 
   /**
    * Selects logs only of a specific type, all other types are filtered out.
@@ -392,12 +397,12 @@ public final class LogBuffer {
   }
 
   public static class Builder {
-    private ChronicleConfig config = ChronicleConfig.MEDIUM.clone();
+    private ChronicleConfig config = ChronicleConfig.LARGE.clone();
     private Optional<String> basePath = Optional.absent();
     private Serializers serializers = new Serializers();
 
     public Builder() {
-      config.indexFileExcerpts(Short.MAX_VALUE + 1000);
+      config.indexFileExcerpts(Short.MAX_VALUE);
     }
 
     public Builder basePath(String basePath) {
