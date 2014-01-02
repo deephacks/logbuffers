@@ -30,7 +30,6 @@ public class LogBufferTailChunkTest {
    */
   @Test
   public void slow_batch_reader() throws Exception {
-    final long chunkMs = 300;
     final int roundMs = 300;
     final long writeTimeMs = TimeUnit.SECONDS.toMillis(3);
     final LogBuffer buffer = new Builder().basePath(dir).addSerializer(new JacksonSerializer()).build();
@@ -41,7 +40,15 @@ public class LogBufferTailChunkTest {
 
       // start tail after writers to make sure "early" logs are captured
       TailPeriod tail = new TailPeriod();
-      buffer.forwardTimeChunksWithFixedDelay(tail, chunkMs, roundMs, TimeUnit.MILLISECONDS);
+      if (i % 2 == 0) {
+        System.out.println("forwardWithFixedDelay");
+        buffer.forwardWithFixedDelay(tail, roundMs, TimeUnit.MILLISECONDS);
+      } else {
+        final long chunkMs = 300;
+        System.out.println("forwardTimeChunksWithFixedDelay");
+        buffer.forwardTimeChunksWithFixedDelay(tail, chunkMs, roundMs, TimeUnit.MILLISECONDS);
+      }
+
       latch.await();
       System.out.println("Writer done. size " + writers.writes.size() + " idx " + writers.writes.lastKey());
       final long now = System.currentTimeMillis();
@@ -71,7 +78,7 @@ public class LogBufferTailChunkTest {
       }
 
       if (!logs.isEmpty()) {
-        System.out.println("Read index: " + logs.getFirstLog().getIndex() + " ... " + logs.getLastLog().getIndex() + " size: " + reads.size());
+        System.out.println("Read index: " + logs.getFirstLog().getIndex() + " ... " + logs.getLastLog().getIndex() + " size: " + logs.size());
       }
       for (A a : logs.getObjects()) {
         if (reads.putIfAbsent(logs.getLog(a).getIndex(), a) != null) {

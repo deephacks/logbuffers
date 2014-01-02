@@ -317,7 +317,7 @@ public final class LogBuffer {
       if (log.getType() != Log.DEFAULT_TYPE) {
         ObjectLogSerializer serializer = serializers.getSerializer(log.getType());
         if (serializer == null) {
-          throw new IllegalStateException("No serializer found for type " + log.getMetaDataAsString());
+          throw new IllegalStateException("No serializer found for type " + log.getType());
         }
         Class<?> cls = serializer.getMapping().get(log.getType());
         if (type.isAssignableFrom(cls)) {

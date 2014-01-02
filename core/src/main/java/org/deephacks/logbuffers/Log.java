@@ -5,15 +5,12 @@ import com.google.common.base.Preconditions;
 import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.ExcerptTailer;
 
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Date;
 
 /**
  * A raw log.
  */
 public final class Log {
-  public static SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss:SSS");
   /** default type if no type is specified */
   public static long DEFAULT_TYPE = 1;
 
@@ -136,18 +133,10 @@ public final class Log {
   @Override
   public int hashCode() {
     int result = (int) (type ^ (type >>> 32));
-    result = 31 * result + (content != null ? Arrays.hashCode(content) : 0);
+    result = 31 * result + (int) (type ^ (type >>> 32));
     result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
     result = 31 * result + (int) (index ^ (index >>> 32));
     return result;
-  }
-
-  public String getMetaDataAsString() {
-    return "Log{" +
-            "index=" + index +
-            ", timestamp=" + format.format(new Date(timestamp))  +
-            ", type=" + type +
-            '}';
   }
 
   @Override
@@ -156,7 +145,6 @@ public final class Log {
             "index=" + index +
             ", timestamp=" + timestamp +
             ", type=" + type +
-            ", content=" + Arrays.toString(content) +
             '}';
   }
 }
