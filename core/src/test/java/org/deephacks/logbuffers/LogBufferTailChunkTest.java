@@ -34,28 +34,30 @@ public class LogBufferTailChunkTest {
     final int roundMs = 300;
     final long writeTimeMs = TimeUnit.SECONDS.toMillis(3);
     final LogBuffer buffer = new Builder().basePath(dir).addSerializer(new JacksonSerializer()).build();
-    final CountDownLatch latch = new CountDownLatch(1);
-    Writers writers = new Writers(writeTimeMs, buffer, latch);
-    writers.start();
+    for (int i = 1; i < 3; i++) {
+      final CountDownLatch latch = new CountDownLatch(1);
+      Writers writers = new Writers(writeTimeMs, buffer, latch);
+      writers.start();
 
-    // start tail after writers to make sure "early" logs are captured
-    TailPeriod tail = new TailPeriod();
-    buffer.forwardTimeChunksWithFixedDelay(tail, chunkMs, roundMs, TimeUnit.MILLISECONDS);
-    latch.await();
-    System.out.println("Writer done. size " + writers.writes.size() + " idx " + writers.writes.lastKey());
-    final long now = System.currentTimeMillis();
-    while (tail.reads.size() != writers.writes.size()) {
-      Thread.sleep(500);
-      if ((System.currentTimeMillis() - now) >  TimeUnit.SECONDS.toMillis(10)) {
-        throw new RuntimeException("Readers took too long. Maybe this machine is slow, but probably a bug.");
+      // start tail after writers to make sure "early" logs are captured
+      TailPeriod tail = new TailPeriod();
+      buffer.forwardTimeChunksWithFixedDelay(tail, chunkMs, roundMs, TimeUnit.MILLISECONDS);
+      latch.await();
+      System.out.println("Writer done. size " + writers.writes.size() + " idx " + writers.writes.lastKey());
+      final long now = System.currentTimeMillis();
+      while (tail.reads.size() != writers.writes.size()) {
+        Thread.sleep(500);
+        if ((System.currentTimeMillis() - now) >  TimeUnit.SECONDS.toMillis(10)) {
+          throw new RuntimeException("Readers took too long. Maybe this machine is slow, but probably a bug.");
+        }
       }
+      // wait a bit to be certain that tail doesn't move past the write index
+      Thread.sleep(roundMs);
+      assertThat(tail.reads.size(), is(writers.writes.size()));
+      buffer.cancel(TailPeriod.class);
+      System.out.println("Readers... size "+ tail.reads.size() + " idx " + tail.reads.lastKey());
+      System.out.println("Round " + i + " success " + tail.reads.size());
     }
-    // wait a bit to be certain that tail doesn't move past the write index
-    Thread.sleep(roundMs);
-    assertThat(tail.reads.size(), is(writers.writes.size()));
-    buffer.cancel(TailPeriod.class);
-    System.out.println("Readers... size "+ tail.reads.size() + " idx " + tail.reads.lastKey());
-    System.out.println("SUCCESS: "+ tail.reads.size());
   }
 
   public static class TailPeriod implements Tail<A> {
