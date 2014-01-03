@@ -131,8 +131,8 @@ public class LogBufferTest {
 
   @Test
   public void test_scheduled_forward() throws Exception {
-
-    logBuffer.forwardWithFixedDelay(tail, 500, TimeUnit.MILLISECONDS);
+    TailSchedule tailSchedule = TailSchedule.builder(tail).delay(500, TimeUnit.MILLISECONDS).build();
+    logBuffer.forwardWithFixedDelay(tailSchedule);
     // one log
     RawLog log1 = logBuffer.write(c1);
     Thread.sleep(600);

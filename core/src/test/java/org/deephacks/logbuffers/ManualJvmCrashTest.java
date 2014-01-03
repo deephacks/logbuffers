@@ -19,15 +19,16 @@ public class ManualJvmCrashTest {
   public static void main(String[] args) throws Exception {
     new File(DIR).mkdirs();
     LogBuffer buffer = new Builder().basePath(DIR).build();
-    Tailer tailer = new Tailer();
+    RawLogTail tail = new RawLogTail();
     new Writer(buffer).start();
     Thread.sleep(500);
-    buffer.forwardWithFixedDelay(tailer, 10, TimeUnit.MILLISECONDS);
+    TailSchedule schedule = TailSchedule.builder(tail).delay(10, TimeUnit.MILLISECONDS).build();
+    buffer.forwardWithFixedDelay(schedule);
     new ChaosMonkey().start();
     Thread.sleep(30000);
   }
 
-  public static class Tailer implements Tail<RawLog> {
+  public static class RawLogTail implements Tail<RawLog> {
 
     @Override
     public void process(Logs<RawLog> logs) {

@@ -14,6 +14,7 @@
 package org.deephacks.logbuffers;
 
 import com.google.common.base.Optional;
+import org.deephacks.logbuffers.ForwardResult.ScheduleAgain;
 
 import javax.lang.model.type.TypeVariable;
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -93,11 +95,11 @@ class LogBufferTail<T> {
     if (scheduledFuture != null) {
       return;
     }
-    scheduledFuture = this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this), 0, delay, unit);
+    scheduledFuture = this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this, logBuffer.getCachedExecutor()), 0, delay, unit);
   }
 
   public void forwardNow() {
-    this.logBuffer.getCachedExecutor().schedule(new TailSchedule(this), 0, TimeUnit.MILLISECONDS);
+    this.logBuffer.getCachedExecutor().schedule(new TailSchedule(this, logBuffer.getCachedExecutor()), 0, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -132,18 +134,20 @@ class LogBufferTail<T> {
   }
 
   private static final class TailSchedule implements Runnable {
-    private LogBufferTail tailer;
-
-    public TailSchedule(LogBufferTail tailer) {
-      this.tailer = tailer;
+    private LogBufferTail tail;
+    private ScheduledExecutorService executor;
+    public TailSchedule(LogBufferTail tail, ScheduledExecutorService executor) {
+      this.tail = tail;
+      this.executor = executor;
     }
 
     @Override
     public void run() {
       try {
-        ForwardResult forwardResult = tailer.forward();
-        while (!forwardResult.isFinished()) {
-          forwardResult = tailer.forward();
+        ForwardResult forwardResult = tail.forward();
+        Optional<ScheduleAgain> scheduleAgain = forwardResult.scheduleAgain();
+        if (scheduleAgain.isPresent()) {
+          executor.schedule(this, scheduleAgain.get().getDelay(), scheduleAgain.get().getTimeUnit());
         }
       } catch (Throwable e) {
         // ignore for now

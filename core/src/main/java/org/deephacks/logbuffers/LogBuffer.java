@@ -19,6 +19,7 @@ import net.openhft.chronicle.ChronicleConfig;
 import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.ExcerptTailer;
 import net.openhft.chronicle.IndexedChronicle;
+import org.deephacks.logbuffers.TailSchedule.TailScheduleChunk;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,7 +28,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -49,39 +49,25 @@ public final class LogBuffer {
 
   private final Logger logger;
 
-  /**
-   * system tmp dir
-   */
+  /** system tmp dir */
   private static final String TMP_DIR = System.getProperty("java.io.tmpdir");
 
-  /**
-   * default path used by log files if not specified
-   */
+  /** default path used by log files if not specified */
   private static final String DEFAULT_BASE_PATH = TMP_DIR + "/logbuffer";
 
-  /**
-   * optional executor used only by scheduled tailing
-   */
+  /** optional executor used only by scheduled tailing */
   private ScheduledExecutorService cachedExecutor;
 
-  /**
-   * this should be rolling, but there are bugs. Change later to VanillaChronicle in later versions
-   */
+  /** this should be rolling, but there are bugs. Change later to VanillaChronicle in later versions */
   private IndexedChronicle rollingChronicle;
 
-  /**
-   * log writer
-   */
+  /** log writer */
   private final ExcerptAppender excerptAppender;
 
-  /**
-   * log reader
-   */
+  /** log reader */
   private final ExcerptTailer excerptTailer;
 
-  /**
-   * path where log buffer files are stored
-   */
+  /** path where log buffer files are stored */
   private String basePath;
 
   private ConcurrentHashMap<Class<?>, LogBufferTail<?>> tails = new ConcurrentHashMap<>();
@@ -468,12 +454,11 @@ public final class LogBuffer {
    * will be given each round. Logs are not duplicated. If a failure occur, all unprocessed logs are
    * retried next round.
    *
-   * @param delay the delay between the termination of one execution and the commencement of the next.
-   * @param unit  time unit of the delay parameter.
+   * @param schedule the schedule description for the tail
    */
-  public void forwardWithFixedDelay(Tail<?> tail, int delay, TimeUnit unit) throws IOException {
-    LogBufferTail<?> logBufferTail = putIfAbsent(tail);
-    logBufferTail.forwardWithFixedDelay(delay, unit);
+  public void forwardWithFixedDelay(TailSchedule schedule) throws IOException {
+    LogBufferTail<?> logBufferTail = putIfAbsent(schedule.getTail());
+    logBufferTail.forwardWithFixedDelay(schedule.getDelay(), schedule.getUnit());
   }
 
   /**
@@ -481,14 +466,12 @@ public final class LogBuffer {
    * iteratively in chunks according to a certain period of time until all unprocessed logs are
    * finished. Logs are not duplicated. If a failure occur, the same chunk is retried next round.
    *
-   * @param chunkMs how long each period of logs to be processed
-   * @param delay   the delay between the termination of one execution and the commencement of the next.
-   * @param unit    time unit of the delay parameter.
+   * @param schedule the schedule description for the tail
    * @throws IOException
    */
-  public void forwardTimeChunksWithFixedDelay(Tail<?> tail, long chunkMs, int delay, TimeUnit unit) throws IOException {
-    LogBufferTail<?> logBufferTail = putIfAbsent(tail, chunkMs);
-    logBufferTail.forwardWithFixedDelay(delay, unit);
+  public void forwardWithFixedDelay(TailScheduleChunk schedule) throws IOException {
+    LogBufferTail<?> logBufferTail = putIfAbsent(schedule);
+    logBufferTail.forwardWithFixedDelay(schedule.getDelay(), schedule.getUnit());
   }
 
   private <T> LogBufferTail<T> putIfAbsent(Tail<?> tail) throws IOException {
@@ -499,8 +482,9 @@ public final class LogBuffer {
     return (LogBufferTail<T>) logBufferTail;
   }
 
-  private <T> LogBufferTail<T> putIfAbsent(Tail<?> tail, long chunkMs) throws IOException {
-    LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTailChunk<>(this, tail, chunkMs));
+  private <T> LogBufferTail<T> putIfAbsent(TailScheduleChunk schedule) throws IOException {
+    Tail<?> tail = schedule.getTail();
+    LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTailChunk<>(this, schedule));
     if (logBufferTail == null) {
       logBufferTail = tails.get(tail.getClass());
     }

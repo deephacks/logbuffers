@@ -16,11 +16,13 @@ package org.deephacks.logbuffers;
 import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
 import com.google.common.io.Files;
+import org.deephacks.logbuffers.TailSchedule.TailScheduleChunk;
 
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Specialized tail that provide logs iteratively in chunks according to a certain period of time.
@@ -29,10 +31,14 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
   private static SimpleDateFormat FORMAT = new SimpleDateFormat("YYYY-MM-DD'T'HH:mm:ss:SSS");
   private long chunkMs;
   private File readTime;
+  private long rescheduleDelay = 0;
+  private TimeUnit rescheduleTimeUnit = TimeUnit.MILLISECONDS;
 
-  LogBufferTailChunk(LogBuffer logBuffer, Tail<T> tail, long chunkMs) throws IOException {
-    super(logBuffer, tail);
-    this.chunkMs = chunkMs;
+  LogBufferTailChunk(LogBuffer logBuffer, TailScheduleChunk schedule) throws IOException {
+    super(logBuffer, (Tail<T>) schedule.getTail());
+    this.chunkMs = schedule.getChunkMs();
+    this.rescheduleDelay = schedule.getBackLogScheduleDelay();
+    this.rescheduleTimeUnit = schedule.getBackLogScheduleUnit();
     this.readTime = new File(getTailId() + ".lastRead_date_timestamp_index");
   }
 
@@ -75,7 +81,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       // alter the result to indicate that there are already more logs
       // to process after this round have been executed. Hence we can
       // act quickly and process these as fast as possible, if needed.
-      result = new ForwardResult(false);
+      result = ForwardResult.scheduleAgain(rescheduleDelay, rescheduleTimeUnit);
     }
     try {
       // ready to process logs. ignore any exceptions since the LogBuffer
@@ -86,6 +92,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       writeReadIndex(lastReadIndex + 1);
       writeHumanReadableTime(lastRead);
     } catch (Exception e) {
+      // cancel any immediate scheduling if log processing failed
       result = new ForwardResult();
       System.err.println(e.getMessage());
     }

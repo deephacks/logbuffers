@@ -6,6 +6,7 @@ import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.deephacks.logbuffers.LogUtil;
 import org.deephacks.logbuffers.Logs;
 import org.deephacks.logbuffers.Tail;
+import org.deephacks.logbuffers.TailSchedule;
 import org.deephacks.logbuffers.json.JacksonSerializer.A;
 import org.deephacks.logbuffers.json.JacksonSerializer.B;
 import org.deephacks.logbuffers.json.JacksonSerializer.TailA;
@@ -233,9 +234,10 @@ public class JacksonLogBufferTest {
 
   @Test
   public void test_scheduled_forward() throws Exception {
-
-    logBuffer.forwardWithFixedDelay(tailA, 500, TimeUnit.MILLISECONDS);
-    logBuffer.forwardWithFixedDelay(tailB, 500, TimeUnit.MILLISECONDS);
+    TailSchedule scheduleA = TailSchedule.builder(tailA).delay(500, TimeUnit.MILLISECONDS).build();
+    logBuffer.forwardWithFixedDelay(scheduleA);
+    TailSchedule scheduleB = TailSchedule.builder(tailB).delay(500, TimeUnit.MILLISECONDS).build();
+    logBuffer.forwardWithFixedDelay(scheduleB);
 
     // one A log
     logBuffer.write(a1);

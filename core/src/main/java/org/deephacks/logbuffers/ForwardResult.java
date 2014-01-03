@@ -14,18 +14,45 @@
 package org.deephacks.logbuffers;
 
 
+import com.google.common.base.Optional;
+
+import java.util.concurrent.TimeUnit;
+
 class ForwardResult {
-  private boolean finished = true;
+
+  private Optional<ScheduleAgain> scheduleAgain = Optional.absent();
 
   ForwardResult() {
 
   }
 
-  ForwardResult(boolean finished) {
-    this.finished = finished;
+  ForwardResult(ScheduleAgain scheduleAgain) {
+    this.scheduleAgain = Optional.fromNullable(scheduleAgain);
   }
 
-  boolean isFinished() {
-    return finished;
+  public static ForwardResult scheduleAgain(long delay, TimeUnit unit) {
+    return new ForwardResult(new ScheduleAgain(delay, unit));
+  }
+
+  Optional<ScheduleAgain> scheduleAgain() {
+    return scheduleAgain;
+  }
+
+  public static final class ScheduleAgain {
+    private long delay;
+    private TimeUnit timeUnit;
+
+    private ScheduleAgain(long delay, TimeUnit timeUnit) {
+      this.delay = delay;
+      this.timeUnit = timeUnit;
+    }
+
+    public long getDelay() {
+      return delay;
+    }
+
+    public TimeUnit getTimeUnit() {
+      return timeUnit;
+    }
   }
 }

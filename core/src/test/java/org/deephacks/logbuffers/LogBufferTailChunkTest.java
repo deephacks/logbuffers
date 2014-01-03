@@ -1,6 +1,7 @@
 package org.deephacks.logbuffers;
 
 import org.deephacks.logbuffers.LogBuffer.Builder;
+import org.deephacks.logbuffers.TailSchedule.TailScheduleChunk;
 import org.deephacks.logbuffers.json.JacksonSerializer;
 import org.deephacks.logbuffers.json.JacksonSerializer.A;
 import org.deephacks.logbuffers.json.JacksonSerializer.PageViews;
@@ -17,6 +18,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
@@ -39,6 +41,7 @@ public class LogBufferTailChunkTest {
   public void slow_batch_reader() throws Exception {
     final int roundMs = 300;
     final long writeTimeMs = TimeUnit.SECONDS.toMillis(3);
+    // test json and protobuf logs in same buffer
     final LogBuffer buffer = new Builder().basePath(basePath)
             .addSerializer(new JacksonSerializer())
             .addSerializer(new ProtobufSerializer()).build();
@@ -55,13 +58,27 @@ public class LogBufferTailChunkTest {
       TailA tailA = new TailA();
       if (i % 2 == 0) {
         System.out.println("forwardWithFixedDelay");
-        buffer.forwardWithFixedDelay(pageViewTail, roundMs, TimeUnit.MILLISECONDS);
-        buffer.forwardWithFixedDelay(tailA, roundMs, TimeUnit.MILLISECONDS);
+        TailSchedule pageViewSchedule = TailSchedule.builder(pageViewTail)
+                .delay(roundMs, MILLISECONDS)
+                .build();
+        buffer.forwardWithFixedDelay(pageViewSchedule);
+        TailSchedule tailASchedule = TailSchedule.builder(tailA)
+                .delay(roundMs, MILLISECONDS)
+                .build();
+        buffer.forwardWithFixedDelay(tailASchedule);
       } else {
-        final long chunkMs = 200;
+        final long chunk = 200;
         System.out.println("forwardTimeChunksWithFixedDelay");
-        buffer.forwardTimeChunksWithFixedDelay(pageViewTail, chunkMs, roundMs, TimeUnit.MILLISECONDS);
-        buffer.forwardTimeChunksWithFixedDelay(tailA, chunkMs, roundMs, TimeUnit.MILLISECONDS);
+        TailScheduleChunk pageViewSchedule = TailScheduleChunk.builder(pageViewTail)
+                .delay(roundMs, MILLISECONDS)
+                .chunkLength(chunk, MILLISECONDS)
+                .build();
+        buffer.forwardWithFixedDelay(pageViewSchedule);
+        TailScheduleChunk tailASchedule = TailScheduleChunk.builder(tailA)
+                .delay(roundMs, MILLISECONDS)
+                .chunkLength(chunk, MILLISECONDS)
+                .build();
+        buffer.forwardWithFixedDelay(tailASchedule);
       }
 
       // wait for writers to finish
@@ -157,6 +174,7 @@ public class LogBufferTailChunkTest {
             while (System.currentTimeMillis() < stopTime) {
               try {
                 LogUtil.sleep(1);
+                // protobuf object
                 PageView pageView = PageView.newBuilder().setUrl(LogUtil.randomUrl()).setValue(1).build();
                 RawLog log = buffer.write(pageView);
                 if (pageViewWrites.putIfAbsent(log.getIndex(), pageView) != null) {
@@ -165,6 +183,7 @@ public class LogBufferTailChunkTest {
                 if (log.getIndex() % 10000 == 0) {
                   System.out.println("Write index: " + log.getIndex());
                 }
+                // json object
                 A a = new A(new Random().nextLong());
                 log = buffer.write(a);
                 if (aWrites.putIfAbsent(log.getIndex(), a) != null) {
