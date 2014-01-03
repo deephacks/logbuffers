@@ -13,6 +13,8 @@
  */
 package org.deephacks.logbuffers;
 
+import com.google.common.base.Optional;
+
 import javax.lang.model.type.TypeVariable;
 import java.io.IOException;
 import java.lang.reflect.GenericArrayType;
@@ -64,8 +66,12 @@ class LogBufferTail<T> {
      */
     long currentWriteIndex = logBuffer.getWriteIndex();
     long currentReadIndex = getReadIndex();
-    Logs<T> messages = logBuffer.select(type, currentReadIndex, currentWriteIndex);
-    tail.process(messages);
+    Optional<RawLog> currentLog = logBuffer.getNext(type, currentReadIndex);
+    if (!currentLog.isPresent()) {
+      return new ForwardResult();
+    }
+    Logs<T> logs = logBuffer.select(type, currentReadIndex, currentWriteIndex);
+    tail.process(logs);
     // only write the read index if tail was successful
     writeReadIndex(currentWriteIndex);
     return new ForwardResult();

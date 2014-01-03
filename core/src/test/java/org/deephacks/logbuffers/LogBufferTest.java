@@ -37,14 +37,13 @@ public class LogBufferTest {
   @Test
   public void test_write_read() throws IOException {
     // one log
-    Log log1 = logBuffer.write(c1);
-    System.out.println(log1.getIndex());
-    List<Log> select = logBuffer.select(0);
+    RawLog log1 = logBuffer.write(c1);
+
+    List<RawLog> select = logBuffer.select(0);
     assertArrayEquals(select.get(0).getContent(), log1.getContent());
 
     // write another
-    Log log2 = logBuffer.write(c2);
-    System.out.println(log2.getIndex());
+    RawLog log2 = logBuffer.write(c2);
     select = logBuffer.select(0);
     assertThat(select.size(), is(2));
     assertArrayEquals(select.get(0).getContent(), log1.getContent());
@@ -62,20 +61,20 @@ public class LogBufferTest {
   @Test
   public void test_write_read_period() throws Exception {
     long t1 = timestamp();
-    Log log1 = logBuffer.write(c1);
+    RawLog log1 = logBuffer.write(c1);
 
     long t2 = timestamp();
-    Log log2 = logBuffer.write(c2);
+    RawLog log2 = logBuffer.write(c2);
 
     long t3 = timestamp();
-    Log log3 = logBuffer.write(c3);
+    RawLog log3 = logBuffer.write(c3);
 
     long t4 = timestamp();
-    Log log4 = logBuffer.write(c4);
+    RawLog log4 = logBuffer.write(c4);
 
     long t5 = timestamp();
 
-    List<Log> select = logBuffer.selectBackward(0, t1);
+    List<RawLog> select = logBuffer.selectBackward(0, t1);
     assertThat(select.size(), is(0));
 
     select = logBuffer.selectBackward(t1, t2);
@@ -109,13 +108,13 @@ public class LogBufferTest {
   public void test_manual_forward() throws IOException {
 
     // one log
-    Log log1 = logBuffer.write(c1);
+    RawLog log1 = logBuffer.write(c1);
     logBuffer.forward(tail);
     assertThat(tail.logs.size(), is(1));
     assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());
 
     // write another
-    Log log2 = logBuffer.write(c2);
+    RawLog log2 = logBuffer.write(c2);
     logBuffer.forward(tail);
     assertThat(tail.logs.size(), is(2));
     assertArrayEquals(tail.logs.get(1).getContent(), log2.getContent());
@@ -135,13 +134,13 @@ public class LogBufferTest {
 
     logBuffer.forwardWithFixedDelay(tail, 500, TimeUnit.MILLISECONDS);
     // one log
-    Log log1 = logBuffer.write(c1);
+    RawLog log1 = logBuffer.write(c1);
     Thread.sleep(600);
     assertThat(tail.logs.size(), is(1));
     assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());
 
     // write another
-    Log log2 = logBuffer.write(c2);
+    RawLog log2 = logBuffer.write(c2);
     Thread.sleep(600);
 
     assertThat(tail.logs.size(), is(2));
@@ -165,14 +164,13 @@ public class LogBufferTest {
     return time;
   }
 
-  public static class TailLog implements Tail<Log> {
+  public static class TailLog implements Tail<RawLog> {
 
-    public List<Log> logs = new ArrayList<>();
+    public List<RawLog> logs = new ArrayList<>();
 
     @Override
-    public void process(Logs<Log> logs) {
-      this.logs.addAll(logs.getObjects());
+    public void process(Logs<RawLog> logs) {
+      this.logs.addAll(logs.get());
     }
   }
-
 }

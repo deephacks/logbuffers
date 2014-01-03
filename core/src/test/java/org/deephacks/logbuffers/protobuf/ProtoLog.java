@@ -21,30 +21,30 @@ public final class ProtoLog {
      */
     int getProtoType();
 
-    // required string msg = 1;
+    // required string url = 1;
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
-    boolean hasMsg();
+    boolean hasUrl();
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
-    java.lang.String getMsg();
+    java.lang.String getUrl();
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
     com.google.protobuf.ByteString
-        getMsgBytes();
+        getUrlBytes();
 
-    // required uint32 code = 2;
+    // required int64 value = 2;
     /**
-     * <code>required uint32 code = 2;</code>
+     * <code>required int64 value = 2;</code>
      */
-    boolean hasCode();
+    boolean hasValue();
     /**
-     * <code>required uint32 code = 2;</code>
+     * <code>required int64 value = 2;</code>
      */
-    int getCode();
+    long getValue();
   }
   /**
    * Protobuf type {@code logbuffer.PageView}
@@ -99,12 +99,12 @@ public final class ProtoLog {
             }
             case 10: {
               bitField0_ |= 0x00000002;
-              msg_ = input.readBytes();
+              url_ = input.readBytes();
               break;
             }
             case 16: {
               bitField0_ |= 0x00000004;
-              code_ = input.readUInt32();
+              value_ = input.readInt64();
               break;
             }
             case 8000: {
@@ -168,20 +168,20 @@ public final class ProtoLog {
       return protoType_;
     }
 
-    // required string msg = 1;
-    public static final int MSG_FIELD_NUMBER = 1;
-    private java.lang.Object msg_;
+    // required string url = 1;
+    public static final int URL_FIELD_NUMBER = 1;
+    private java.lang.Object url_;
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
-    public boolean hasMsg() {
+    public boolean hasUrl() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
-    public java.lang.String getMsg() {
-      java.lang.Object ref = msg_;
+    public java.lang.String getUrl() {
+      java.lang.Object ref = url_;
       if (ref instanceof java.lang.String) {
         return (java.lang.String) ref;
       } else {
@@ -189,59 +189,59 @@ public final class ProtoLog {
             (com.google.protobuf.ByteString) ref;
         java.lang.String s = bs.toStringUtf8();
         if (bs.isValidUtf8()) {
-          msg_ = s;
+          url_ = s;
         }
         return s;
       }
     }
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
     public com.google.protobuf.ByteString
-        getMsgBytes() {
-      java.lang.Object ref = msg_;
+        getUrlBytes() {
+      java.lang.Object ref = url_;
       if (ref instanceof java.lang.String) {
         com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
-        msg_ = b;
+        url_ = b;
         return b;
       } else {
         return (com.google.protobuf.ByteString) ref;
       }
     }
 
-    // required uint32 code = 2;
-    public static final int CODE_FIELD_NUMBER = 2;
-    private int code_;
+    // required int64 value = 2;
+    public static final int VALUE_FIELD_NUMBER = 2;
+    private long value_;
     /**
-     * <code>required uint32 code = 2;</code>
+     * <code>required int64 value = 2;</code>
      */
-    public boolean hasCode() {
+    public boolean hasValue() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
     /**
-     * <code>required uint32 code = 2;</code>
+     * <code>required int64 value = 2;</code>
      */
-    public int getCode() {
-      return code_;
+    public long getValue() {
+      return value_;
     }
 
     private void initFields() {
       protoType_ = 0;
-      msg_ = "";
-      code_ = 0;
+      url_ = "";
+      value_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
 
-      if (!hasMsg()) {
+      if (!hasUrl()) {
         memoizedIsInitialized = 0;
         return false;
       }
-      if (!hasCode()) {
+      if (!hasValue()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -253,10 +253,10 @@ public final class ProtoLog {
                         throws java.io.IOException {
       getSerializedSize();
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeBytes(1, getMsgBytes());
+        output.writeBytes(1, getUrlBytes());
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeUInt32(2, code_);
+        output.writeInt64(2, value_);
       }
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeUInt32(1000, protoType_);
@@ -272,11 +272,11 @@ public final class ProtoLog {
       size = 0;
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(1, getMsgBytes());
+          .computeBytesSize(1, getUrlBytes());
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeUInt32Size(2, code_);
+          .computeInt64Size(2, value_);
       }
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -400,9 +400,9 @@ public final class ProtoLog {
         super.clear();
         protoType_ = 0;
         bitField0_ = (bitField0_ & ~0x00000001);
-        msg_ = "";
+        url_ = "";
         bitField0_ = (bitField0_ & ~0x00000002);
-        code_ = 0;
+        value_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
@@ -439,11 +439,11 @@ public final class ProtoLog {
         if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
           to_bitField0_ |= 0x00000002;
         }
-        result.msg_ = msg_;
+        result.url_ = url_;
         if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
           to_bitField0_ |= 0x00000004;
         }
-        result.code_ = code_;
+        result.value_ = value_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -463,24 +463,24 @@ public final class ProtoLog {
         if (other.hasProtoType()) {
           setProtoType(other.getProtoType());
         }
-        if (other.hasMsg()) {
+        if (other.hasUrl()) {
           bitField0_ |= 0x00000002;
-          msg_ = other.msg_;
+          url_ = other.url_;
           onChanged();
         }
-        if (other.hasCode()) {
-          setCode(other.getCode());
+        if (other.hasValue()) {
+          setValue(other.getValue());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
 
       public final boolean isInitialized() {
-        if (!hasMsg()) {
+        if (!hasUrl()) {
           
           return false;
         }
-        if (!hasCode()) {
+        if (!hasValue()) {
           
           return false;
         }
@@ -539,109 +539,109 @@ public final class ProtoLog {
         return this;
       }
 
-      // required string msg = 1;
-      private java.lang.Object msg_ = "";
+      // required string url = 1;
+      private java.lang.Object url_ = "";
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public boolean hasMsg() {
+      public boolean hasUrl() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public java.lang.String getMsg() {
-        java.lang.Object ref = msg_;
+      public java.lang.String getUrl() {
+        java.lang.Object ref = url_;
         if (!(ref instanceof java.lang.String)) {
           java.lang.String s = ((com.google.protobuf.ByteString) ref)
               .toStringUtf8();
-          msg_ = s;
+          url_ = s;
           return s;
         } else {
           return (java.lang.String) ref;
         }
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
       public com.google.protobuf.ByteString
-          getMsgBytes() {
-        java.lang.Object ref = msg_;
+          getUrlBytes() {
+        java.lang.Object ref = url_;
         if (ref instanceof String) {
           com.google.protobuf.ByteString b = 
               com.google.protobuf.ByteString.copyFromUtf8(
                   (java.lang.String) ref);
-          msg_ = b;
+          url_ = b;
           return b;
         } else {
           return (com.google.protobuf.ByteString) ref;
         }
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public Builder setMsg(
+      public Builder setUrl(
           java.lang.String value) {
         if (value == null) {
     throw new NullPointerException();
   }
   bitField0_ |= 0x00000002;
-        msg_ = value;
+        url_ = value;
         onChanged();
         return this;
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public Builder clearMsg() {
+      public Builder clearUrl() {
         bitField0_ = (bitField0_ & ~0x00000002);
-        msg_ = getDefaultInstance().getMsg();
+        url_ = getDefaultInstance().getUrl();
         onChanged();
         return this;
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public Builder setMsgBytes(
+      public Builder setUrlBytes(
           com.google.protobuf.ByteString value) {
         if (value == null) {
     throw new NullPointerException();
   }
   bitField0_ |= 0x00000002;
-        msg_ = value;
+        url_ = value;
         onChanged();
         return this;
       }
 
-      // required uint32 code = 2;
-      private int code_ ;
+      // required int64 value = 2;
+      private long value_ ;
       /**
-       * <code>required uint32 code = 2;</code>
+       * <code>required int64 value = 2;</code>
        */
-      public boolean hasCode() {
+      public boolean hasValue() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
       /**
-       * <code>required uint32 code = 2;</code>
+       * <code>required int64 value = 2;</code>
        */
-      public int getCode() {
-        return code_;
+      public long getValue() {
+        return value_;
       }
       /**
-       * <code>required uint32 code = 2;</code>
+       * <code>required int64 value = 2;</code>
        */
-      public Builder setCode(int value) {
+      public Builder setValue(long value) {
         bitField0_ |= 0x00000004;
-        code_ = value;
+        value_ = value;
         onChanged();
         return this;
       }
       /**
-       * <code>required uint32 code = 2;</code>
+       * <code>required int64 value = 2;</code>
        */
-      public Builder clearCode() {
+      public Builder clearValue() {
         bitField0_ = (bitField0_ & ~0x00000004);
-        code_ = 0;
+        value_ = 0L;
         onChanged();
         return this;
       }
@@ -670,30 +670,30 @@ public final class ProtoLog {
      */
     int getProtoType();
 
-    // required string msg = 1;
+    // required string url = 1;
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
-    boolean hasMsg();
+    boolean hasUrl();
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
-    java.lang.String getMsg();
+    java.lang.String getUrl();
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
     com.google.protobuf.ByteString
-        getMsgBytes();
+        getUrlBytes();
 
-    // required uint32 code = 2;
+    // required int64 value = 2;
     /**
-     * <code>required uint32 code = 2;</code>
+     * <code>required int64 value = 2;</code>
      */
-    boolean hasCode();
+    boolean hasValue();
     /**
-     * <code>required uint32 code = 2;</code>
+     * <code>required int64 value = 2;</code>
      */
-    int getCode();
+    long getValue();
   }
   /**
    * Protobuf type {@code logbuffer.Visit}
@@ -748,12 +748,12 @@ public final class ProtoLog {
             }
             case 10: {
               bitField0_ |= 0x00000002;
-              msg_ = input.readBytes();
+              url_ = input.readBytes();
               break;
             }
             case 16: {
               bitField0_ |= 0x00000004;
-              code_ = input.readUInt32();
+              value_ = input.readInt64();
               break;
             }
             case 8008: {
@@ -817,20 +817,20 @@ public final class ProtoLog {
       return protoType_;
     }
 
-    // required string msg = 1;
-    public static final int MSG_FIELD_NUMBER = 1;
-    private java.lang.Object msg_;
+    // required string url = 1;
+    public static final int URL_FIELD_NUMBER = 1;
+    private java.lang.Object url_;
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
-    public boolean hasMsg() {
+    public boolean hasUrl() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
-    public java.lang.String getMsg() {
-      java.lang.Object ref = msg_;
+    public java.lang.String getUrl() {
+      java.lang.Object ref = url_;
       if (ref instanceof java.lang.String) {
         return (java.lang.String) ref;
       } else {
@@ -838,59 +838,59 @@ public final class ProtoLog {
             (com.google.protobuf.ByteString) ref;
         java.lang.String s = bs.toStringUtf8();
         if (bs.isValidUtf8()) {
-          msg_ = s;
+          url_ = s;
         }
         return s;
       }
     }
     /**
-     * <code>required string msg = 1;</code>
+     * <code>required string url = 1;</code>
      */
     public com.google.protobuf.ByteString
-        getMsgBytes() {
-      java.lang.Object ref = msg_;
+        getUrlBytes() {
+      java.lang.Object ref = url_;
       if (ref instanceof java.lang.String) {
         com.google.protobuf.ByteString b = 
             com.google.protobuf.ByteString.copyFromUtf8(
                 (java.lang.String) ref);
-        msg_ = b;
+        url_ = b;
         return b;
       } else {
         return (com.google.protobuf.ByteString) ref;
       }
     }
 
-    // required uint32 code = 2;
-    public static final int CODE_FIELD_NUMBER = 2;
-    private int code_;
+    // required int64 value = 2;
+    public static final int VALUE_FIELD_NUMBER = 2;
+    private long value_;
     /**
-     * <code>required uint32 code = 2;</code>
+     * <code>required int64 value = 2;</code>
      */
-    public boolean hasCode() {
+    public boolean hasValue() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
     /**
-     * <code>required uint32 code = 2;</code>
+     * <code>required int64 value = 2;</code>
      */
-    public int getCode() {
-      return code_;
+    public long getValue() {
+      return value_;
     }
 
     private void initFields() {
       protoType_ = 0;
-      msg_ = "";
-      code_ = 0;
+      url_ = "";
+      value_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
 
-      if (!hasMsg()) {
+      if (!hasUrl()) {
         memoizedIsInitialized = 0;
         return false;
       }
-      if (!hasCode()) {
+      if (!hasValue()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -902,10 +902,10 @@ public final class ProtoLog {
                         throws java.io.IOException {
       getSerializedSize();
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeBytes(1, getMsgBytes());
+        output.writeBytes(1, getUrlBytes());
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeUInt32(2, code_);
+        output.writeInt64(2, value_);
       }
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeUInt32(1001, protoType_);
@@ -921,11 +921,11 @@ public final class ProtoLog {
       size = 0;
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(1, getMsgBytes());
+          .computeBytesSize(1, getUrlBytes());
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeUInt32Size(2, code_);
+          .computeInt64Size(2, value_);
       }
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -1049,9 +1049,9 @@ public final class ProtoLog {
         super.clear();
         protoType_ = 0;
         bitField0_ = (bitField0_ & ~0x00000001);
-        msg_ = "";
+        url_ = "";
         bitField0_ = (bitField0_ & ~0x00000002);
-        code_ = 0;
+        value_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
@@ -1088,11 +1088,11 @@ public final class ProtoLog {
         if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
           to_bitField0_ |= 0x00000002;
         }
-        result.msg_ = msg_;
+        result.url_ = url_;
         if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
           to_bitField0_ |= 0x00000004;
         }
-        result.code_ = code_;
+        result.value_ = value_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1112,24 +1112,24 @@ public final class ProtoLog {
         if (other.hasProtoType()) {
           setProtoType(other.getProtoType());
         }
-        if (other.hasMsg()) {
+        if (other.hasUrl()) {
           bitField0_ |= 0x00000002;
-          msg_ = other.msg_;
+          url_ = other.url_;
           onChanged();
         }
-        if (other.hasCode()) {
-          setCode(other.getCode());
+        if (other.hasValue()) {
+          setValue(other.getValue());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
 
       public final boolean isInitialized() {
-        if (!hasMsg()) {
+        if (!hasUrl()) {
           
           return false;
         }
-        if (!hasCode()) {
+        if (!hasValue()) {
           
           return false;
         }
@@ -1188,109 +1188,109 @@ public final class ProtoLog {
         return this;
       }
 
-      // required string msg = 1;
-      private java.lang.Object msg_ = "";
+      // required string url = 1;
+      private java.lang.Object url_ = "";
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public boolean hasMsg() {
+      public boolean hasUrl() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public java.lang.String getMsg() {
-        java.lang.Object ref = msg_;
+      public java.lang.String getUrl() {
+        java.lang.Object ref = url_;
         if (!(ref instanceof java.lang.String)) {
           java.lang.String s = ((com.google.protobuf.ByteString) ref)
               .toStringUtf8();
-          msg_ = s;
+          url_ = s;
           return s;
         } else {
           return (java.lang.String) ref;
         }
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
       public com.google.protobuf.ByteString
-          getMsgBytes() {
-        java.lang.Object ref = msg_;
+          getUrlBytes() {
+        java.lang.Object ref = url_;
         if (ref instanceof String) {
           com.google.protobuf.ByteString b = 
               com.google.protobuf.ByteString.copyFromUtf8(
                   (java.lang.String) ref);
-          msg_ = b;
+          url_ = b;
           return b;
         } else {
           return (com.google.protobuf.ByteString) ref;
         }
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public Builder setMsg(
+      public Builder setUrl(
           java.lang.String value) {
         if (value == null) {
     throw new NullPointerException();
   }
   bitField0_ |= 0x00000002;
-        msg_ = value;
+        url_ = value;
         onChanged();
         return this;
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public Builder clearMsg() {
+      public Builder clearUrl() {
         bitField0_ = (bitField0_ & ~0x00000002);
-        msg_ = getDefaultInstance().getMsg();
+        url_ = getDefaultInstance().getUrl();
         onChanged();
         return this;
       }
       /**
-       * <code>required string msg = 1;</code>
+       * <code>required string url = 1;</code>
        */
-      public Builder setMsgBytes(
+      public Builder setUrlBytes(
           com.google.protobuf.ByteString value) {
         if (value == null) {
     throw new NullPointerException();
   }
   bitField0_ |= 0x00000002;
-        msg_ = value;
+        url_ = value;
         onChanged();
         return this;
       }
 
-      // required uint32 code = 2;
-      private int code_ ;
+      // required int64 value = 2;
+      private long value_ ;
       /**
-       * <code>required uint32 code = 2;</code>
+       * <code>required int64 value = 2;</code>
        */
-      public boolean hasCode() {
+      public boolean hasValue() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
       /**
-       * <code>required uint32 code = 2;</code>
+       * <code>required int64 value = 2;</code>
        */
-      public int getCode() {
-        return code_;
+      public long getValue() {
+        return value_;
       }
       /**
-       * <code>required uint32 code = 2;</code>
+       * <code>required int64 value = 2;</code>
        */
-      public Builder setCode(int value) {
+      public Builder setValue(long value) {
         bitField0_ |= 0x00000004;
-        code_ = value;
+        value_ = value;
         onChanged();
         return this;
       }
       /**
-       * <code>required uint32 code = 2;</code>
+       * <code>required int64 value = 2;</code>
        */
-      public Builder clearCode() {
+      public Builder clearValue() {
         bitField0_ = (bitField0_ & ~0x00000004);
-        code_ = 0;
+        value_ = 0L;
         onChanged();
         return this;
       }
@@ -1326,11 +1326,11 @@ public final class ProtoLog {
   static {
     java.lang.String[] descriptorData = {
       "\n\034src/test/resources/log.proto\022\tlogbuffe" +
-      "r\"9\n\010PageView\022\022\n\tprotoType\030\350\007 \001(\r\022\013\n\003msg" +
-      "\030\001 \002(\t\022\014\n\004code\030\002 \002(\r\"6\n\005Visit\022\022\n\tprotoTy" +
-      "pe\030\351\007 \001(\r\022\013\n\003msg\030\001 \002(\t\022\014\n\004code\030\002 \002(\rB-\n!" +
-      "org.deephacks.logbuffers.protobufB\010Proto" +
-      "Log"
+      "r\":\n\010PageView\022\022\n\tprotoType\030\350\007 \001(\r\022\013\n\003url" +
+      "\030\001 \002(\t\022\r\n\005value\030\002 \002(\003\"7\n\005Visit\022\022\n\tprotoT" +
+      "ype\030\351\007 \001(\r\022\013\n\003url\030\001 \002(\t\022\r\n\005value\030\002 \002(\003B-" +
+      "\n!org.deephacks.logbuffers.protobufB\010Pro" +
+      "toLog"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -1342,13 +1342,13 @@ public final class ProtoLog {
           internal_static_logbuffer_PageView_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_logbuffer_PageView_descriptor,
-              new java.lang.String[] { "ProtoType", "Msg", "Code", });
+              new java.lang.String[] { "ProtoType", "Url", "Value", });
           internal_static_logbuffer_Visit_descriptor =
             getDescriptor().getMessageTypes().get(1);
           internal_static_logbuffer_Visit_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_logbuffer_Visit_descriptor,
-              new java.lang.String[] { "ProtoType", "Msg", "Code", });
+              new java.lang.String[] { "ProtoType", "Url", "Value", });
           return null;
         }
       };

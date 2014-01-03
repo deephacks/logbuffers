@@ -13,7 +13,6 @@
  */
 package org.deephacks.logbuffers;
 
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 
 /**
@@ -22,26 +21,33 @@ import java.util.LinkedList;
 public class Logs<T> {
 
   /** sequentially ordered logs according to index and timestamp */
-  private LinkedHashMap<T, Log> logs = new LinkedHashMap<>();
-
-  /** the actual objects */
-  private LinkedList<T> objects;
+  private LinkedList<Log<T>> logs = new LinkedList<>();
 
   /**
    * the buffer is responsible for putting the logs in the correct order
    */
-  void put(T object, Log log) {
-    logs.put(object, log);
+  void put(T object, RawLog log) {
+    logs.add(new Log<>(log, object));
   }
 
   /**
    * Get all logs ordered sequentially according to index and timestamp
    *
+   * @return real object and log meta data.
+   */
+  public LinkedList<Log<T>> getLogs() {
+    return logs;
+  }
+
+  /**
+   * Get all objects ordered sequentially according to index and timestamp
+   *
    * @return the real objects that represent the logs
    */
-  public LinkedList<T> getObjects() {
-    if (objects == null) {
-      objects = new LinkedList<>(logs.keySet());
+  public LinkedList<T> get() {
+    LinkedList<T> objects = new LinkedList<>();
+    for (Log<T> log : logs) {
+      objects.add(log.get());
     }
     return objects;
   }
@@ -50,38 +56,26 @@ public class Logs<T> {
    * @return the first object
    */
   public T getFirst() {
-    return getObjects().getFirst();
+    return logs.getFirst().get();
   }
 
-  public Log getFirstLog() {
-    return getLog(getObjects().getFirst());
+  public RawLog getFirstLog() {
+    return logs.getFirst().getRaw();
   }
-
 
   /**
    * @return the last object
    */
   public T getLast() {
-    return getObjects().getLast();
+    return logs.getLast().get();
   }
 
   /**
    * @return the last log contained in this list of logs
    */
-  public Log getLastLog() {
-    T last = getObjects().getLast();
-    return logs.get(last);
+  public RawLog getLastLog() {
+    return logs.getLast().getRaw();
   }
-
-
-  /**
-   * @param object to fetch the raw log for
-   * @return log the contain meta data such as index, timestamp etc.
-   */
-  public Log getLog(T object) {
-    return logs.get(object);
-  }
-
 
   /**
    * @return number of logs

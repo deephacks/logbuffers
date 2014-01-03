@@ -80,11 +80,6 @@ public final class LogBuffer {
   private final ExcerptTailer excerptTailer;
 
   /**
-   * lock used when reading
-   */
-  private final Object readLock = new Object();
-
-  /**
    * path where log buffer files are stored
    */
   private String basePath;
@@ -115,8 +110,8 @@ public final class LogBuffer {
    * @param content raw content.
    * @throws IOException
    */
-  public Log write(byte[] content) throws IOException {
-    return internalWrite(content, Log.DEFAULT_TYPE);
+  public RawLog write(byte[] content) throws IOException {
+    return internalWrite(content, RawLog.DEFAULT_TYPE);
   }
 
   /**
@@ -126,21 +121,21 @@ public final class LogBuffer {
    * @return the log that was created.
    * @throws IOException
    */
-  public Log write(Object object) throws IOException {
+  public RawLog write(Object object) throws IOException {
     Class<?> cls = object.getClass();
     ObjectLogSerializer serializer = serializers.getSerializer(cls);
     byte[] content = serializer.serialize(object);
     return internalWrite(content, serializers.getType(cls));
   }
 
-  private Log internalWrite(byte[] content, long type) throws IOException {
+  private RawLog internalWrite(byte[] content, long type) throws IOException {
     // single writer is required in order append to file since there is
     // only one file written to at a given time. Also for generating unique
     // sequential indexes and sequential timestamps.
     synchronized (excerptAppender) {
-      Log log = new Log(type, content);
+      RawLog log = new RawLog(type, content);
       long index = log.write(excerptAppender);
-      return new Log(log, index);
+      return new RawLog(log, index);
     }
   }
 
@@ -152,21 +147,21 @@ public final class LogBuffer {
    * @return A list of raw object logs.
    * @throws IOException
    */
-  public List<Log> select(long fromIndex) throws IOException {
+  public List<RawLog> select(long fromIndex) throws IOException {
     long writeIdx = getWriteIndex();
     return select(fromIndex, writeIdx);
   }
 
-  Optional<Log> get(long index) throws IOException {
+  Optional<RawLog> get(long index) throws IOException {
     synchronized (excerptTailer) {
-      return Log.read(excerptTailer, index);
+      return RawLog.read(excerptTailer, index);
     }
   }
 
   /**
    * Get the next forward index of specified type.
    */
-  public <T> Optional<Log> getNext(Class<T> cls, long index) throws IOException {
+  public <T> Optional<RawLog> getNext(Class<T> cls, long index) throws IOException {
     synchronized (excerptTailer) {
       long writeIndex = getWriteIndex();
       while (index < writeIndex) {
@@ -175,7 +170,7 @@ public final class LogBuffer {
           continue;
         }
         long type = optional.get();
-        if (type != Log.DEFAULT_TYPE) {
+        if (type != RawLog.DEFAULT_TYPE) {
           ObjectLogSerializer serializer = serializers.getSerializer(type);
           Class<?> found = serializer.getMapping().get(type);
           if (cls.isAssignableFrom(found)) {
@@ -194,17 +189,17 @@ public final class LogBuffer {
    */
   Optional<Long> peekTimestamp(long index) throws IOException {
     synchronized (excerptTailer) {
-      return Log.peekTimestamp(excerptTailer, index);
+      return RawLog.peekTimestamp(excerptTailer, index);
     }
   }
 
   Optional<Long> peekType(long index) throws IOException {
     synchronized (excerptTailer) {
-      return Log.peekType(excerptTailer, index);
+      return RawLog.peekType(excerptTailer, index);
     }
   }
 
-  Optional<Log> getLatestWrite() throws IOException {
+  Optional<RawLog> getLatestWrite() throws IOException {
     long index = getWriteIndex();
     if (index == 0) {
       return get(0);
@@ -221,17 +216,13 @@ public final class LogBuffer {
    * @return A list of raw object logs.
    * @throws IOException
    */
-  public List<Log> select(long fromIndex, long toIndex) throws IOException {
+  public List<RawLog> select(long fromIndex, long toIndex) throws IOException {
     Preconditions.checkArgument(fromIndex <= toIndex, "from must be less than to");
-    synchronized (readLock) {
-      List<Log> messages = new ArrayList<>();
-      long maxIndex = getWriteIndex();
-      if (toIndex > maxIndex) {
-        toIndex = maxIndex;
-      }
+    List<RawLog> messages = new ArrayList<>();
+    synchronized (excerptTailer) {
       long read = fromIndex;
       while (read < toIndex) {
-        Optional<Log> optional = get(read++);
+        Optional<RawLog> optional = get(read++);
         if (!optional.isPresent()) {
           break;
         }
@@ -250,8 +241,21 @@ public final class LogBuffer {
    * @return list of matching logs
    * @throws IOException
    */
-  public List<Log> selectBackward(long fromTimeMs, long toTimeMs) throws IOException {
+  public List<RawLog> selectBackward(long fromTimeMs, long toTimeMs) throws IOException {
     return selectBackward(getWriteIndex() - 1, fromTimeMs, toTimeMs);
+  }
+
+  /**
+   * Select a list of logs based on the given period of time with respect
+   * to the timestamp of each log.
+   *
+   * @param fromTimeMs from (inclusive)
+   * @param toTimeMs   to (inclusive)
+   * @return list of matching logs
+   * @throws IOException
+   */
+  public List<RawLog> selectForward(long fromTimeMs, long toTimeMs) throws IOException {
+    return selectForward(getWriteIndex() - 1, fromTimeMs, toTimeMs);
   }
 
   /**
@@ -265,10 +269,10 @@ public final class LogBuffer {
    * @return list of matching logs
    * @throws IOException
    */
-  public List<Log> selectBackward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
+  public List<RawLog> selectBackward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
-    LinkedList<Log> messages = new LinkedList<>();
-    synchronized (readLock) {
+    LinkedList<RawLog> messages = new LinkedList<>();
+    synchronized (excerptTailer) {
       for (long i = fromIndex; i > -1; i--) {
         Optional<Long> optional = peekTimestamp(i);
         if (!optional.isPresent()) {
@@ -299,11 +303,11 @@ public final class LogBuffer {
    * @return list of matching logs
    * @throws IOException
    */
-  public List<Log> selectForward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
+  public List<RawLog> selectForward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
-    LinkedList<Log> messages = new LinkedList<>();
+    LinkedList<RawLog> messages = new LinkedList<>();
     long writeIndex = getWriteIndex();
-    synchronized (readLock) {
+    synchronized (excerptTailer) {
       for (long i = fromIndex; i < writeIndex; i++) {
         Optional<Long> optional = peekTimestamp(i);
         if (!optional.isPresent()) {
@@ -345,7 +349,7 @@ public final class LogBuffer {
    * @throws IOException
    */
   public <T> Logs<T> select(Class<T> type, long fromIndex, long toIndex) throws IOException {
-    List<Log> logs = select(fromIndex, toIndex);
+    List<RawLog> logs = select(fromIndex, toIndex);
     return convert(type, logs);
   }
 
@@ -353,10 +357,11 @@ public final class LogBuffer {
    * Selects a specific type of logs only, all other types are filtered out, based on the
    * given period of time with respect to the timestamp of each log.
    * <p/>
+   *
    * {@link #selectBackward(long, long, long)}
    */
   public <T> Logs<T> selectBackward(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
-    final List<Log> logs = selectBackward(fromTimeMs, toTimeMs);
+    final List<RawLog> logs = selectBackward(fromTimeMs, toTimeMs);
     return convert(type, logs);
   }
 
@@ -364,17 +369,18 @@ public final class LogBuffer {
    * Selects a specific type of logs only, all other types are filtered out, based on the
    * given period of time with respect to the timestamp of each log.
    * <p/>
+   *
    * {@link #selectForward(Class, long, long, long)}
    */
   public <T> Logs<T> selectForward(Class<T> type, long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
-    final List<Log> logs = selectForward(fromIndex, fromTimeMs, toTimeMs);
+    final List<RawLog> logs = selectForward(fromIndex, fromTimeMs, toTimeMs);
     return convert(type, logs);
   }
 
-  private <T> Logs<T> convert(Class<T> type, List<Log> logs) {
+  private <T> Logs<T> convert(Class<T> type, List<RawLog> logs) {
     Logs<T> result = new Logs<>();
-    for (Log log : logs) {
-      if (log.getType() != Log.DEFAULT_TYPE) {
+    for (RawLog log : logs) {
+      if (log.getType() != RawLog.DEFAULT_TYPE) {
         ObjectLogSerializer serializer = serializers.getSerializer(log.getType());
         if (serializer == null) {
           throw new IllegalStateException("No serializer found for type " + log.getType());
@@ -385,7 +391,7 @@ public final class LogBuffer {
           result.put(object, log);
         }
       } else {
-        if (type.isAssignableFrom(Log.class)) {
+        if (type.isAssignableFrom(RawLog.class)) {
           result.put((T) log, log);
         }
       }

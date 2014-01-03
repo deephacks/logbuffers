@@ -4,7 +4,10 @@ import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.deephacks.logbuffers.json.JacksonSerializer;
 import org.deephacks.logbuffers.json.JacksonSerializer.A;
 import org.deephacks.logbuffers.json.JacksonSerializer.PageViews;
+import org.deephacks.logbuffers.json.JacksonSerializer.PageViews.Count;
 import org.deephacks.logbuffers.json.JacksonSerializer.TailA;
+import org.deephacks.logbuffers.protobuf.ProtoLog.PageView;
+import org.deephacks.logbuffers.protobuf.ProtobufSerializer;
 import org.junit.Test;
 
 import java.io.File;
@@ -14,7 +17,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.deephacks.logbuffers.json.JacksonSerializer.PageView;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
@@ -37,7 +39,9 @@ public class LogBufferTailChunkTest {
   public void slow_batch_reader() throws Exception {
     final int roundMs = 300;
     final long writeTimeMs = TimeUnit.SECONDS.toMillis(3);
-    final LogBuffer buffer = new Builder().basePath(basePath).addSerializer(new JacksonSerializer()).build();
+    final LogBuffer buffer = new Builder().basePath(basePath)
+            .addSerializer(new JacksonSerializer())
+            .addSerializer(new ProtobufSerializer()).build();
     final LogBuffer aggregate = new Builder().basePath(aggregatePath).addSerializer(new JacksonSerializer()).build();
     for (int i = 1; i < 3; i++) {
       long first = System.currentTimeMillis();
@@ -85,9 +89,9 @@ public class LogBufferTailChunkTest {
       // check that page view aggregation by the pageViewTail logger is same as writer
       Logs<PageViews> select = aggregate.selectBackward(PageViews.class, first, System.currentTimeMillis());
       PageViews sum = new PageViews(select.getFirst().getFrom(), select.getLastLog().getTimestamp());
-      for (PageViews pageViews : select.getObjects()) {
-        for (PageView pageView : pageViews.getPageViews().values()) {
-          sum.increment(pageView.getUrl(), pageView.getValue());
+      for (PageViews pageViews : select.get()) {
+        for (Count count : pageViews.getCounts().values()) {
+          sum.increment(count.getUrl(), count.getIncrement());
         }
       }
       assertThat((int) sum.total(), is(writers.pageViewWrites.size()));
@@ -114,10 +118,10 @@ public class LogBufferTailChunkTest {
       System.out.println("Read index: " + logs.getFirstLog().getIndex() + " ... " + logs.getLastLog().getIndex() + " size: " + logs.size());
 
       PageViews pageViews = new PageViews(logs.getFirstLog().getTimestamp(), logs.getLastLog().getTimestamp());
-      for (PageView pageView : logs.getObjects()) {
-        pageViews.increment(pageView.getUrl(), 1);
-        Log log = logs.getLog(pageView);
-        if (reads.putIfAbsent(log.getIndex(), pageView) != null) {
+      for (Log<PageView> pageView : logs.getLogs()) {
+        pageViews.increment(pageView.get().getUrl(), 1);
+        RawLog log = pageView.getRaw();
+        if (reads.putIfAbsent(log.getIndex(), pageView.get()) != null) {
           throw new RuntimeException("Duplicate read index!");
         }
       }
@@ -153,8 +157,8 @@ public class LogBufferTailChunkTest {
             while (System.currentTimeMillis() < stopTime) {
               try {
                 LogUtil.sleep(1);
-                PageView pageView = new PageView(LogUtil.randomUrl());
-                Log log = buffer.write(pageView);
+                PageView pageView = PageView.newBuilder().setUrl(LogUtil.randomUrl()).setValue(1).build();
+                RawLog log = buffer.write(pageView);
                 if (pageViewWrites.putIfAbsent(log.getIndex(), pageView) != null) {
                   throw new RuntimeException("Duplicate write index!");
                 }

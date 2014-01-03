@@ -26,10 +26,10 @@ public class ProtobufLogBufferTest {
 
   LogBuffer logBuffer;
 
-  PageView p1 = PageView.newBuilder().setMsg("hello1").setCode(1).build();
-  PageView p2 = PageView.newBuilder().setMsg("hello2").setCode(2).build();
-  Visit v1 = Visit.newBuilder().setMsg("vist1").setCode(1).build();
-  Visit v2 = Visit.newBuilder().setMsg("vist2").setCode(2).build();
+  PageView p1 = PageView.newBuilder().setUrl("www.google.com").setValue(1).build();
+  PageView p2 = PageView.newBuilder().setUrl("www.cloudera.com").setValue(2).build();
+  Visit v1 = Visit.newBuilder().setUrl("www.apache.org").setValue(1).build();
+  Visit v2 = Visit.newBuilder().setUrl("www.google.com").setValue(2).build();
 
 
   @Before
@@ -52,22 +52,22 @@ public class ProtobufLogBufferTest {
     // one type log
     logBuffer.write(p1);
     logBuffer.write(p2);
-    List<PageView> pageViews = logBuffer.select(PageView.class, 0).getObjects();
+    List<PageView> pageViews = logBuffer.select(PageView.class, 0).get();
 
-    assertThat(pageViews.get(0).getMsg(), is(p1.getMsg()));
-    assertThat(pageViews.get(0).getCode(), is(p1.getCode()));
-    assertThat(pageViews.get(1).getMsg(), is(p2.getMsg()));
-    assertThat(pageViews.get(1).getCode(), is(p2.getCode()));
+    assertThat(pageViews.get(0).getUrl(), is(p1.getUrl()));
+    assertThat(pageViews.get(0).getValue(), is(p1.getValue()));
+    assertThat(pageViews.get(1).getUrl(), is(p2.getUrl()));
+    assertThat(pageViews.get(1).getValue(), is(p2.getValue()));
 
     // another type log
     logBuffer.write(v1);
     logBuffer.write(v2);
-    List<Visit> visits = logBuffer.select(Visit.class, 0).getObjects();
+    List<Visit> visits = logBuffer.select(Visit.class, 0).get();
 
-    assertThat(visits.get(0).getMsg(), is(v1.getMsg()));
-    assertThat(visits.get(0).getCode(), is(v1.getCode()));
-    assertThat(visits.get(1).getMsg(), is(v2.getMsg()));
-    assertThat(visits.get(1).getCode(), is(v2.getCode()));
+    assertThat(visits.get(0).getUrl(), is(v1.getUrl()));
+    assertThat(visits.get(0).getValue(), is(v1.getValue()));
+    assertThat(visits.get(1).getUrl(), is(v2.getUrl()));
+    assertThat(visits.get(1).getValue(), is(v2.getValue()));
   }
 
   @Test
@@ -81,14 +81,14 @@ public class ProtobufLogBufferTest {
     logBuffer.forward(visitTail);
     assertThat(visitTail.logs.size(), is(2));
     assertThat(pageViewTail.logs.size(), is(0));
-    assertThat(visitTail.logs.get(0).getMsg(), is(v1.getMsg()));
-    assertThat(visitTail.logs.get(1).getMsg(), is(v2.getMsg()));
+    assertThat(visitTail.logs.get(0).getUrl(), is(v1.getUrl()));
+    assertThat(visitTail.logs.get(1).getUrl(), is(v2.getUrl()));
 
     logBuffer.forward(pageViewTail);
     assertThat(visitTail.logs.size(), is(2));
     assertThat(pageViewTail.logs.size(), is(2));
-    assertThat(pageViewTail.logs.get(0).getMsg(), is(p1.getMsg()));
-    assertThat(pageViewTail.logs.get(1).getMsg(), is(p2.getMsg()));
+    assertThat(pageViewTail.logs.get(0).getUrl(), is(p1.getUrl()));
+    assertThat(pageViewTail.logs.get(1).getUrl(), is(p2.getUrl()));
 
   }
 
@@ -97,7 +97,7 @@ public class ProtobufLogBufferTest {
 
     @Override
     public void process(Logs<PageView> logs) {
-      this.logs.addAll(logs.getObjects());
+      this.logs.addAll(logs.get());
     }
   }
 
@@ -106,7 +106,7 @@ public class ProtobufLogBufferTest {
 
     @Override
     public void process(Logs<Visit> logs) {
-      this.logs.addAll(logs.getObjects());
+      this.logs.addAll(logs.get());
     }
   }
 

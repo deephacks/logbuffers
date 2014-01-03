@@ -28,8 +28,7 @@ public class JacksonSerializer implements ObjectLogSerializer {
   public JacksonSerializer() {
     mapping.put(123L, A.class);
     mapping.put(124L, B.class);
-    mapping.put(125L, PageView.class);
-    mapping.put(126L, PageViews.class);
+    mapping.put(125L, PageViews.class);
   }
 
   @Override
@@ -185,7 +184,7 @@ public class JacksonSerializer implements ObjectLogSerializer {
 
     @Override
     public void process(Logs<A> logs) {
-      this.logs.addAll(logs.getObjects());
+      this.logs.addAll(logs.get());
     }
   }
 
@@ -195,7 +194,7 @@ public class JacksonSerializer implements ObjectLogSerializer {
 
     @Override
     public void process(Logs<B> logs) {
-      this.logs.addAll(logs.getObjects());
+      this.logs.addAll(logs.get());
     }
   }
 
@@ -207,57 +206,9 @@ public class JacksonSerializer implements ObjectLogSerializer {
     return new B(UUID.randomUUID().toString(), val);
   }
 
-  public static class PageView {
-    private String url;
-    private Long value = 1L;
-    private PageView() {
-    }
-
-    public PageView(String url) {
-      this.url = url;
-    }
-
-    public PageView(String url, Long value) {
-      this.url = url;
-      this.value = value;
-    }
-
-    public Long getValue() {
-      return value;
-    }
-
-    public void increment(long increment) {
-      value += increment;
-    }
-
-    public String getUrl() {
-      return url;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-
-      PageView pageView = (PageView) o;
-
-      if (url != null ? !url.equals(pageView.url) : pageView.url != null) return false;
-
-      return true;
-    }
-
-    @Override
-    public String toString() {
-      return "PageView{" +
-              "url='" + url + '\'' +
-              ", value=" + value +
-              '}';
-    }
-  }
-
   public static class PageViews {
     private static SimpleDateFormat FORMAT = new SimpleDateFormat("YYYY-MM-DD'T'HH:mm:ss:SSS");
-    private HashMap<String, PageView> pageViews = new HashMap<>();
+    private HashMap<String, Count> counts = new HashMap<>();
     private Long from;
     private Long to;
     private PageViews() {
@@ -269,17 +220,18 @@ public class JacksonSerializer implements ObjectLogSerializer {
     }
 
     public void increment(String url, long increment) {
-      PageView pageView = pageViews.get(url);
-      if (pageView == null) {
-        pageView = new PageView(url, increment);
-        pageViews.put(url, pageView);
+      Count count = counts.get(url);
+      if (count == null) {
+        count = new Count(url, increment);
+        counts.put(url, count);
       } else {
-        pageView.increment(increment);
+        count.increment(increment);
+        counts.put(url, count);
       }
     }
 
-    public HashMap<String, PageView> getPageViews() {
-      return pageViews;
+    public HashMap<String, Count> getCounts() {
+      return counts;
     }
 
     public Long getFrom() {
@@ -292,8 +244,8 @@ public class JacksonSerializer implements ObjectLogSerializer {
 
     public long total() {
       long total = 0;
-      for (PageView pageView : pageViews.values()) {
-        total += pageView.getValue();
+      for (Count count : counts.values()) {
+        total += count.getIncrement();
       }
       return total;
     }
@@ -301,7 +253,7 @@ public class JacksonSerializer implements ObjectLogSerializer {
     @Override
     public String toString() {
       return "PageViews{" +
-              "pageViews=" + pageViews +
+              "counts=" + counts +
               ", from=" + FORMAT.format(new Date(from)) +
               ", to=" + FORMAT.format(new Date(to)) +
               '}';
@@ -315,10 +267,33 @@ public class JacksonSerializer implements ObjectLogSerializer {
       PageViews pageViews1 = (PageViews) o;
 
       if (from != null ? !from.equals(pageViews1.from) : pageViews1.from != null) return false;
-      if (pageViews != null ? !pageViews.equals(pageViews1.pageViews) : pageViews1.pageViews != null) return false;
+      if (counts != null ? !counts.equals(pageViews1.counts) : pageViews1.counts != null) return false;
       if (to != null ? !to.equals(pageViews1.to) : pageViews1.to != null) return false;
 
       return true;
+    }
+
+    public static class Count {
+      String url; long increment = 1L;
+      private Count() {
+
+      }
+      public Count(String url, long increment) {
+        this.url = url;
+        this.increment = increment;
+      }
+
+      public String getUrl() {
+        return url;
+      }
+
+      public long getIncrement() {
+        return increment;
+      }
+
+      public void increment(long value) {
+        this.increment += value;
+      }
     }
 
     @Override

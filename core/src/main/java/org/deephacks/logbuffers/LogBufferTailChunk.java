@@ -40,13 +40,13 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
   ForwardResult forward() throws IOException {
     // fetch latest written log to determine how far ahead the
     // writer index is so tail can speed up if backlog is too big.
-    Optional<Log> latestWrite = logBuffer.getLatestWrite();
+    Optional<RawLog> latestWrite = logBuffer.getLatestWrite();
     if (!latestWrite.isPresent()) {
       return new ForwardResult();
     }
     // the index that was written by previous tail acknowledgement
     long currentReadIndex = getReadIndex();
-    Optional<Log> currentLog = logBuffer.getNext(type, currentReadIndex);
+    Optional<RawLog> currentLog = logBuffer.getNext(type, currentReadIndex);
     if (!currentLog.isPresent()) {
       return new ForwardResult();
     }
@@ -67,7 +67,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       return new ForwardResult();
     }
     // prepare the next read index BEFORE we hand over logs to tail
-    Log lastRead = logs.getLastLog();
+    RawLog lastRead = logs.getLastLog();
     long lastReadIndex = lastRead.getIndex();
     // prepare result
     ForwardResult result = new ForwardResult();
@@ -81,7 +81,6 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       // ready to process logs. ignore any exceptions since the LogBuffer
       // will take care of them and retry automatically for us next round.
       // haven't persistent anything to disk yet so tail is fine if it happens
-      System.out.println("forward " + logs.size());
       tail.process(logs);
       // only write/persist last read index if tail was successful
       writeReadIndex(lastReadIndex + 1);
@@ -93,7 +92,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     return result;
   }
 
-  private void writeHumanReadableTime(Log lastRead) {
+  private void writeHumanReadableTime(RawLog lastRead) {
     try {
       StringBuilder sb = new StringBuilder();
       sb.append(FORMAT.format(new Date(lastRead.getTimestamp()))).append(' ');

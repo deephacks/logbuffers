@@ -15,8 +15,8 @@ public class ProtobufSerializer implements ObjectLogSerializer {
   private BiMap<Long, Class<?>> mapping = HashBiMap.create();
 
   public ProtobufSerializer() {
-    mapping.put(123L, PageView.class);
-    mapping.put(124L, Visit.class);
+    mapping.put(120L, PageView.class);
+    mapping.put(121L, Visit.class);
   }
 
   @Override
