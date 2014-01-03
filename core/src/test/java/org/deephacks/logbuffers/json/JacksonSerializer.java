@@ -12,7 +12,10 @@ import org.deephacks.logbuffers.Tail;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +28,8 @@ public class JacksonSerializer implements ObjectLogSerializer {
   public JacksonSerializer() {
     mapping.put(123L, A.class);
     mapping.put(124L, B.class);
+    mapping.put(125L, PageView.class);
+    mapping.put(126L, PageViews.class);
   }
 
   @Override
@@ -54,8 +59,6 @@ public class JacksonSerializer implements ObjectLogSerializer {
       throw new RuntimeException(e);
     }
   }
-
-
 
   public static class A {
     private String str;
@@ -118,7 +121,7 @@ public class JacksonSerializer implements ObjectLogSerializer {
 
     @Override
     public String toString() {
-      return "A{" +
+      return "PageView{" +
               "str='" + str + '\'' +
               ", val=" + val +
               '}';
@@ -204,4 +207,125 @@ public class JacksonSerializer implements ObjectLogSerializer {
     return new B(UUID.randomUUID().toString(), val);
   }
 
+  public static class PageView {
+    private String url;
+    private Long value = 1L;
+    private PageView() {
+    }
+
+    public PageView(String url) {
+      this.url = url;
+    }
+
+    public PageView(String url, Long value) {
+      this.url = url;
+      this.value = value;
+    }
+
+    public Long getValue() {
+      return value;
+    }
+
+    public void increment(long increment) {
+      value += increment;
+    }
+
+    public String getUrl() {
+      return url;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      PageView pageView = (PageView) o;
+
+      if (url != null ? !url.equals(pageView.url) : pageView.url != null) return false;
+
+      return true;
+    }
+
+    @Override
+    public String toString() {
+      return "PageView{" +
+              "url='" + url + '\'' +
+              ", value=" + value +
+              '}';
+    }
+  }
+
+  public static class PageViews {
+    private static SimpleDateFormat FORMAT = new SimpleDateFormat("YYYY-MM-DD'T'HH:mm:ss:SSS");
+    private HashMap<String, PageView> pageViews = new HashMap<>();
+    private Long from;
+    private Long to;
+    private PageViews() {
+    }
+
+    public PageViews(Long from, Long to) {
+      this.from = from;
+      this.to = to;
+    }
+
+    public void increment(String url, long increment) {
+      PageView pageView = pageViews.get(url);
+      if (pageView == null) {
+        pageView = new PageView(url, increment);
+        pageViews.put(url, pageView);
+      } else {
+        pageView.increment(increment);
+      }
+    }
+
+    public HashMap<String, PageView> getPageViews() {
+      return pageViews;
+    }
+
+    public Long getFrom() {
+      return from;
+    }
+
+    public Long getTo() {
+      return to;
+    }
+
+    public long total() {
+      long total = 0;
+      for (PageView pageView : pageViews.values()) {
+        total += pageView.getValue();
+      }
+      return total;
+    }
+
+    @Override
+    public String toString() {
+      return "PageViews{" +
+              "pageViews=" + pageViews +
+              ", from=" + FORMAT.format(new Date(from)) +
+              ", to=" + FORMAT.format(new Date(to)) +
+              '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      PageViews pageViews1 = (PageViews) o;
+
+      if (from != null ? !from.equals(pageViews1.from) : pageViews1.from != null) return false;
+      if (pageViews != null ? !pageViews.equals(pageViews1.pageViews) : pageViews1.pageViews != null) return false;
+      if (to != null ? !to.equals(pageViews1.to) : pageViews1.to != null) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = from != null ? from.hashCode() : 0;
+      result = 31 * result + (to != null ? to.hashCode() : 0);
+      return result;
+    }
+  }
 }

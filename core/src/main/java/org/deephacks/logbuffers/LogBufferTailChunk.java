@@ -1,18 +1,26 @@
 package org.deephacks.logbuffers;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Optional;
+import com.google.common.io.Files;
 
+import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Specialized tail that provide logs iteratively in chunks according to a certain period of time.
  */
 class LogBufferTailChunk<T> extends LogBufferTail<T> {
+  private static SimpleDateFormat FORMAT = new SimpleDateFormat("YYYY-MM-DD'T'HH:mm:ss:SSS");
   private long chunkMs;
+  private File readTime;
 
   LogBufferTailChunk(LogBuffer logBuffer, Tail<T> tail, long chunkMs) throws IOException {
     super(logBuffer, tail);
     this.chunkMs = chunkMs;
+    this.readTime = new File(getTailId() + ".lastRead_date_timestamp_index");
   }
 
   @Override
@@ -65,11 +73,24 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       tail.process(logs);
       // only write/persist last read index if tail was successful
       writeReadIndex(lastReadIndex + 1);
+      writeHumanReadableTime(lastRead);
     } catch (Exception e) {
       result = new ForwardResult();
       System.err.println(e.getMessage());
     }
     return result;
+  }
+
+  private void writeHumanReadableTime(Log lastRead) {
+    try {
+      StringBuilder sb = new StringBuilder();
+      sb.append(FORMAT.format(new Date(lastRead.getTimestamp()))).append(' ');
+      sb.append(lastRead.getTimestamp()).append(' ');
+      sb.append(lastRead.getIndex()).append('\n');
+      Files.write(sb.toString().getBytes(Charsets.UTF_8), readTime);
+    } catch (IOException e) {
+      System.err.println("Could not write to " + readTime.getAbsolutePath());
+    }
   }
 
   /**

@@ -14,7 +14,7 @@ import java.util.UUID;
 public class LogUtil {
   public static SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss:SSS");
   public static List<byte[]> randomLogs = new ArrayList<>();
-
+  public static String[] URLS = new String[] {"www.google.com", "www.cloudera.com", "www.apache.org"};
   static {
     for (int i = 0; i < 1000; i++) {
       randomLogs.add(randomLog());
@@ -44,6 +44,10 @@ public class LogUtil {
 
   public static String formatMs(long ms) {
     return format.format(new Date(ms));
+  }
+
+  public static String randomUrl() {
+    return URLS[Math.abs(new Random().nextInt()) % URLS.length];
   }
 
 }
