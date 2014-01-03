@@ -54,21 +54,27 @@ public class LogBufferTailChunkTest {
         buffer.forwardTimeChunksWithFixedDelay(tail, chunkMs, roundMs, TimeUnit.MILLISECONDS);
       }
 
+      // wait for writers to finish
       latch.await();
       System.out.println("Writer done. size " + writers.writes.size() + " idx " + writers.writes.lastKey());
       final long now = System.currentTimeMillis();
+      // wait for tail to finish or fail after timeout
       while (tail.reads.size() != writers.writes.size()) {
         Thread.sleep(500);
         if ((System.currentTimeMillis() - now) >  TimeUnit.SECONDS.toMillis(10)) {
           throw new RuntimeException("Readers took too long. Maybe this machine is slow, but probably a bug.");
         }
       }
+
       // wait a bit to be certain that tail doesn't move past the write index
       Thread.sleep(roundMs);
-      assertThat(tail.reads.size(), is(writers.writes.size()));
       buffer.cancel(TailPeriod.class);
+      // assert that tail and writer have same number of logs
+      assertThat(tail.reads.size(), is(writers.writes.size()));
       System.out.println("Readers... size "+ tail.reads.size() + " idx " + tail.reads.lastKey());
       System.out.println("Round " + i + " success " + tail.reads.size());
+
+      // check that page view aggregation by the tail logger is same as writer
       Logs<PageViews> select = aggregate.selectBackward(PageViews.class, first, System.currentTimeMillis());
       PageViews sum = new PageViews(select.getFirst().getFrom(), select.getLastLog().getTimestamp());
       for (PageViews pageViews : select.getObjects()) {
@@ -77,7 +83,6 @@ public class LogBufferTailChunkTest {
         }
       }
       assertThat((int) sum.total(), is(writers.writes.size()));
-      System.out.println(sum);
     }
   }
 
