@@ -4,9 +4,9 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.deephacks</groupId>
   <artifactId>logbuffers-root</artifactId>
-  <name>logbuffers</name>
+  <name>logbuffers-root</name>
   <packaging>pom</packaging>
-  <version>0.1.0</version>
+  <version>0.0.1-SNAPSHOT</version>
   <description>Fast persistent buffers for streaming data.</description>
   <url>http://logbuffers.deephacks.org</url>
   <inceptionYear>2013</inceptionYear>
@@ -220,7 +220,7 @@
     <dependencies>
       <dependency>
         <groupId>org.deephacks</groupId>
-        <artifactId>logbuffers-core</artifactId>
+        <artifactId>logbuffers</artifactId>
         <version>${version.logbuffers}</version>
         <scope>compile</scope>
       </dependency>
@@ -232,6 +232,48 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+  <profiles>
+    <profile>
+      <id>sign-artifacts</id>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <groupId>org.apache.maven.plugins</groupId>
+            <version>${version.javadoc-plugin}</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+              <execution>
+                <goals>
+                  <goal>aggregate</goal>
+                </goals>
+                <phase>site</phase>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.1</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
   <distributionManagement>
     <repository>
       <id>sonatype-nexus-staging</id>

@@ -4,13 +4,13 @@
   <parent>
     <groupId>org.deephacks</groupId>
     <artifactId>logbuffers-root</artifactId>
-    <version>0.1.0</version>
+    <version>0.0.1-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>logbuffers-core</artifactId>
-  <name>logbuffers core</name>
-  <description>logbuffers core</description>
+  <artifactId>logbuffers</artifactId>
+  <name>logbuffers</name>
+  <description>logbuffers</description>
 
   <dependencies>
     <dependency>
