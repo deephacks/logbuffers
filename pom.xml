@@ -5,7 +5,7 @@
   <artifactId>logbuffers-root</artifactId>
   <name>logbuffers-root</name>
   <packaging>pom</packaging>
-  <version>0.1.2</version>
+  <version>0.1.3-SNAPSHOT</version>
   <description>Fast persistent buffers for streaming data.</description>
   <url>http://logbuffers.deephacks.org</url>
   <inceptionYear>2013</inceptionYear>
