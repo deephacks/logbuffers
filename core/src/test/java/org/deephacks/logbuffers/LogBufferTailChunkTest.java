@@ -2,7 +2,9 @@ package org.deephacks.logbuffers;
 
 import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.deephacks.logbuffers.json.JacksonSerializer;
+import org.deephacks.logbuffers.json.JacksonSerializer.A;
 import org.deephacks.logbuffers.json.JacksonSerializer.PageViews;
+import org.deephacks.logbuffers.json.JacksonSerializer.TailA;
 import org.junit.Test;
 
 import java.io.File;
@@ -25,7 +27,7 @@ public class LogBufferTailChunkTest {
     new File(aggregatePath).mkdirs();
   }
   /**
-   * The general case with high throughput writes and slower batch reader, where the tail process
+   * The general case with high throughput pageViewWrites and slower batch reader, where the tail process
    * logs over longer time periods in order to aggregate data into more manageable chunks.
    *
    * In the event where the backlog grows too fast, the tail will notice and process log chunks
@@ -43,38 +45,44 @@ public class LogBufferTailChunkTest {
       Writers writers = new Writers(writeTimeMs, buffer, latch);
       writers.start();
 
-      // start tail after writers to make sure "early" logs are captured
-      TailPeriod tail = new TailPeriod(aggregate);
+      // start pageViewTail after writers to make sure "early" logs are captured
+      PageViewTail pageViewTail = new PageViewTail(aggregate);
+      // start up a second type tail to make sure different type interfere with each other
+      TailA tailA = new TailA();
       if (i % 2 == 0) {
         System.out.println("forwardWithFixedDelay");
-        buffer.forwardWithFixedDelay(tail, roundMs, TimeUnit.MILLISECONDS);
+        buffer.forwardWithFixedDelay(pageViewTail, roundMs, TimeUnit.MILLISECONDS);
+        buffer.forwardWithFixedDelay(tailA, roundMs, TimeUnit.MILLISECONDS);
       } else {
         final long chunkMs = 200;
         System.out.println("forwardTimeChunksWithFixedDelay");
-        buffer.forwardTimeChunksWithFixedDelay(tail, chunkMs, roundMs, TimeUnit.MILLISECONDS);
+        buffer.forwardTimeChunksWithFixedDelay(pageViewTail, chunkMs, roundMs, TimeUnit.MILLISECONDS);
+        buffer.forwardTimeChunksWithFixedDelay(tailA, chunkMs, roundMs, TimeUnit.MILLISECONDS);
       }
 
       // wait for writers to finish
       latch.await();
-      System.out.println("Writer done. size " + writers.writes.size() + " idx " + writers.writes.lastKey());
+      System.out.println("Writer done. size " + writers.pageViewWrites.size() + " idx " + writers.pageViewWrites.lastKey());
       final long now = System.currentTimeMillis();
-      // wait for tail to finish or fail after timeout
-      while (tail.reads.size() != writers.writes.size()) {
+      // wait for pageViewTail to finish or fail after timeout
+      while (pageViewTail.reads.size() != writers.pageViewWrites.size()) {
         Thread.sleep(500);
         if ((System.currentTimeMillis() - now) >  TimeUnit.SECONDS.toMillis(10)) {
           throw new RuntimeException("Readers took too long. Maybe this machine is slow, but probably a bug.");
         }
       }
 
-      // wait a bit to be certain that tail doesn't move past the write index
+      // wait a bit to be certain that pageViewTail doesn't move past the write index
       Thread.sleep(roundMs);
-      buffer.cancel(TailPeriod.class);
-      // assert that tail and writer have same number of logs
-      assertThat(tail.reads.size(), is(writers.writes.size()));
-      System.out.println("Readers... size "+ tail.reads.size() + " idx " + tail.reads.lastKey());
-      System.out.println("Round " + i + " success " + tail.reads.size());
+      buffer.cancel(PageViewTail.class);
+      buffer.cancel(TailA.class);
+      // assert that pageViewTail and writer have same number of logs
+      assertThat(pageViewTail.reads.size(), is(writers.pageViewWrites.size()));
+      assertThat(tailA.logs.size(), is(writers.aWrites.size()));
+      System.out.println("Readers... size " + pageViewTail.reads.size() + " idx " + pageViewTail.reads.lastKey());
+      System.out.println("Round " + i + " success " + pageViewTail.reads.size());
 
-      // check that page view aggregation by the tail logger is same as writer
+      // check that page view aggregation by the pageViewTail logger is same as writer
       Logs<PageViews> select = aggregate.selectBackward(PageViews.class, first, System.currentTimeMillis());
       PageViews sum = new PageViews(select.getFirst().getFrom(), select.getLastLog().getTimestamp());
       for (PageViews pageViews : select.getObjects()) {
@@ -82,15 +90,15 @@ public class LogBufferTailChunkTest {
           sum.increment(pageView.getUrl(), pageView.getValue());
         }
       }
-      assertThat((int) sum.total(), is(writers.writes.size()));
+      assertThat((int) sum.total(), is(writers.pageViewWrites.size()));
     }
   }
 
-  public static class TailPeriod implements Tail<PageView> {
+  public static class PageViewTail implements Tail<PageView> {
     private int failures = 3;
     private ConcurrentSkipListMap<Long, PageView> reads = new ConcurrentSkipListMap<>();
     private LogBuffer buffer;
-    public TailPeriod(LogBuffer buffer) {
+    public PageViewTail(LogBuffer buffer) {
       this.buffer = buffer;
     }
 
@@ -124,7 +132,8 @@ public class LogBufferTailChunkTest {
   public static class Writers extends Thread {
     private long stopTime;
     private LogBuffer buffer;
-    private ConcurrentSkipListMap<Long, PageView> writes = new ConcurrentSkipListMap<>();
+    private ConcurrentSkipListMap<Long, PageView> pageViewWrites = new ConcurrentSkipListMap<>();
+    private ConcurrentSkipListMap<Long, A> aWrites = new ConcurrentSkipListMap<>();
     private CountDownLatch latch;
     public Writers(long writeTimeMs, LogBuffer buffer, CountDownLatch latch) {
       this.stopTime = System.currentTimeMillis() + writeTimeMs;
@@ -134,8 +143,8 @@ public class LogBufferTailChunkTest {
 
     @Override
     public void run() {
-      // enough to produce at least 100.000 writes per seconds
-      int numThreads = Runtime.getRuntime().availableProcessors() * 2;
+      // enough to produce at least 100.000 pageViewWrites per seconds
+      int numThreads = Runtime.getRuntime().availableProcessors();
       final CountDownLatch threadWait = new CountDownLatch(numThreads);
       for (int i = 0; i < numThreads; i++) {
         new Thread(new Runnable() {
@@ -146,11 +155,16 @@ public class LogBufferTailChunkTest {
                 LogUtil.sleep(1);
                 PageView pageView = new PageView(LogUtil.randomUrl());
                 Log log = buffer.write(pageView);
-                if (writes.putIfAbsent(log.getIndex(), pageView) != null) {
+                if (pageViewWrites.putIfAbsent(log.getIndex(), pageView) != null) {
                   throw new RuntimeException("Duplicate write index!");
                 }
                 if (log.getIndex() % 10000 == 0) {
                   System.out.println("Write index: " + log.getIndex());
+                }
+                A a = new A(new Random().nextLong());
+                log = buffer.write(a);
+                if (aWrites.putIfAbsent(log.getIndex(), a) != null) {
+                  throw new RuntimeException("Duplicate write index!");
                 }
               } catch (Exception e) {
                 throw new RuntimeException(e);

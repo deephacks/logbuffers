@@ -1,3 +1,16 @@
+/**
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.deephacks.logbuffers;
 
 import com.google.common.base.Charsets;
@@ -31,14 +44,12 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     if (!latestWrite.isPresent()) {
       return new ForwardResult();
     }
-
     // the index that was written by previous tail acknowledgement
     long currentReadIndex = getReadIndex();
-    Optional<Log> currentLog = logBuffer.get(currentReadIndex);
+    Optional<Log> currentLog = logBuffer.getNext(type, currentReadIndex);
     if (!currentLog.isPresent()) {
       return new ForwardResult();
     }
-
     // pick the next log by trying to select fixed chunk period
     long fixedFrom = fix(currentLog.get().getTimestamp());
     long fixedTo = fixedFrom + chunkMs - 1;
@@ -70,6 +81,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       // ready to process logs. ignore any exceptions since the LogBuffer
       // will take care of them and retry automatically for us next round.
       // haven't persistent anything to disk yet so tail is fine if it happens
+      System.out.println("forward " + logs.size());
       tail.process(logs);
       // only write/persist last read index if tail was successful
       writeReadIndex(lastReadIndex + 1);

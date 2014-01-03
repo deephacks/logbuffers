@@ -1,3 +1,16 @@
+/**
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.deephacks.logbuffers;
 
 import com.google.common.base.Optional;
@@ -21,14 +34,14 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A log buffer persist data items sequentially on local disk.
- *
+ * <p/>
  * Every written log is assigned a unique writeIndex identifier that works like an sequential offset.
  * Indexes are used by readers to select one or more logs.
- *
+ * <p/>
  * A logical log buffer is divided into a set of files in a configurable directory.
  * New files are created when the capacity of the current file is reached. Files
  * are not deleted at the moment.
- *
+ * <p/>
  * The physical separation of a log buffer is an implementation detail that the user
  * does not need to care about.
  */
@@ -36,28 +49,44 @@ public final class LogBuffer {
 
   private final Logger logger;
 
-  /** system tmp dir*/
+  /**
+   * system tmp dir
+   */
   private static final String TMP_DIR = System.getProperty("java.io.tmpdir");
 
-  /** default path used by log files if not specified */
+  /**
+   * default path used by log files if not specified
+   */
   private static final String DEFAULT_BASE_PATH = TMP_DIR + "/logbuffer";
 
-  /** optional executor used only by scheduled tailing */
+  /**
+   * optional executor used only by scheduled tailing
+   */
   private ScheduledExecutorService cachedExecutor;
 
-  /** this should be rolling, but there are bugs. Change later to VanillaChronicle in later versions */
+  /**
+   * this should be rolling, but there are bugs. Change later to VanillaChronicle in later versions
+   */
   private IndexedChronicle rollingChronicle;
 
-  /** log writer */
+  /**
+   * log writer
+   */
   private final ExcerptAppender excerptAppender;
 
-  /** log reader */
+  /**
+   * log reader
+   */
   private final ExcerptTailer excerptTailer;
 
-  /** lock used when reading */
+  /**
+   * lock used when reading
+   */
   private final Object readLock = new Object();
 
-  /** path where log buffer files are stored */
+  /**
+   * path where log buffer files are stored
+   */
   private String basePath;
 
   private ConcurrentHashMap<Class<?>, LogBufferTail<?>> tails = new ConcurrentHashMap<>();
@@ -135,11 +164,43 @@ public final class LogBuffer {
   }
 
   /**
+   * Get the next forward index of specified type.
+   */
+  public <T> Optional<Log> getNext(Class<T> cls, long index) throws IOException {
+    synchronized (excerptTailer) {
+      long writeIndex = getWriteIndex();
+      while (index < writeIndex) {
+        Optional<Long> optional = peekType(index++);
+        if (!optional.isPresent()) {
+          continue;
+        }
+        long type = optional.get();
+        if (type != Log.DEFAULT_TYPE) {
+          ObjectLogSerializer serializer = serializers.getSerializer(type);
+          Class<?> found = serializer.getMapping().get(type);
+          if (cls.isAssignableFrom(found)) {
+            return get(index - 1);
+          }
+        } else {
+          return get(index - 1);
+        }
+      }
+    }
+    return Optional.absent();
+  }
+
+  /**
    * Only reads the timestamp in order to avoid serialization overhead.
    */
   Optional<Long> peekTimestamp(long index) throws IOException {
     synchronized (excerptTailer) {
       return Log.peekTimestamp(excerptTailer, index);
+    }
+  }
+
+  Optional<Long> peekType(long index) throws IOException {
+    synchronized (excerptTailer) {
+      return Log.peekType(excerptTailer, index);
     }
   }
 
@@ -156,7 +217,7 @@ public final class LogBuffer {
    * provided writeIndex.
    *
    * @param fromIndex writeIndex to read from.
-   * @param toIndex writeIndex to read up until.
+   * @param toIndex   writeIndex to read up until.
    * @return A list of raw object logs.
    * @throws IOException
    */
@@ -185,7 +246,7 @@ public final class LogBuffer {
    * to the timestamp of each log.
    *
    * @param fromTimeMs from (inclusive)
-   * @param toTimeMs to (inclusive)
+   * @param toTimeMs   to (inclusive)
    * @return list of matching logs
    * @throws IOException
    */
@@ -199,8 +260,8 @@ public final class LogBuffer {
    * backwards in time.
    *
    * @param fromTimeMs from (inclusive)
-   * @param toTimeMs to (inclusive)
-   * @param fromIndex from what index to start scanning
+   * @param toTimeMs   to (inclusive)
+   * @param fromIndex  from what index to start scanning
    * @return list of matching logs
    * @throws IOException
    */
@@ -233,8 +294,8 @@ public final class LogBuffer {
    * forwards in time.
    *
    * @param fromTimeMs from (inclusive)
-   * @param toTimeMs to (inclusive)
-   * @param fromIndex from what index to start scanning
+   * @param toTimeMs   to (inclusive)
+   * @param fromIndex  from what index to start scanning
    * @return list of matching logs
    * @throws IOException
    */
@@ -265,7 +326,7 @@ public final class LogBuffer {
   /**
    * Selects logs only of a specific type, all other types are filtered out.
    *
-   * @param type the type of logs to be selected.
+   * @param type      the type of logs to be selected.
    * @param fromIndex writeIndex to read from.
    * @return A list of object logs.
    * @throws IOException
@@ -277,9 +338,9 @@ public final class LogBuffer {
   /**
    * Selects a specific type of logs only, all other types are filtered out.
    *
-   * @param type the type of logs to be selected.
+   * @param type      the type of logs to be selected.
    * @param fromIndex writeIndex to read from.
-   * @param toIndex writeIndex to read up until.
+   * @param toIndex   writeIndex to read up until.
    * @return A list of object logs.
    * @throws IOException
    */
@@ -291,9 +352,8 @@ public final class LogBuffer {
   /**
    * Selects a specific type of logs only, all other types are filtered out, based on the
    * given period of time with respect to the timestamp of each log.
-   *
+   * <p/>
    * {@link #selectBackward(long, long, long)}
-   *
    */
   public <T> Logs<T> selectBackward(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
     final List<Log> logs = selectBackward(fromTimeMs, toTimeMs);
@@ -303,7 +363,7 @@ public final class LogBuffer {
   /**
    * Selects a specific type of logs only, all other types are filtered out, based on the
    * given period of time with respect to the timestamp of each log.
-   *
+   * <p/>
    * {@link #selectForward(Class, long, long, long)}
    */
   public <T> Logs<T> selectForward(Class<T> type, long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
@@ -387,8 +447,8 @@ public final class LogBuffer {
    * Cancel the periodic tail task.
    *
    * @param mayInterruptIfRunning if the thread executing this
-   * task should be interrupted; otherwise, in-progress tasks are allowed
-   * to complete
+   *                              task should be interrupted; otherwise, in-progress tasks are allowed
+   *                              to complete
    */
   public <T> void cancel(Class<? extends Tail<T>> cls, boolean mayInterruptIfRunning) throws IOException {
     LogBufferTail<?> logBufferTail = tails.remove(cls);
@@ -403,7 +463,7 @@ public final class LogBuffer {
    * retried next round.
    *
    * @param delay the delay between the termination of one execution and the commencement of the next.
-   * @param unit time unit of the delay parameter.
+   * @param unit  time unit of the delay parameter.
    */
   public void forwardWithFixedDelay(Tail<?> tail, int delay, TimeUnit unit) throws IOException {
     LogBufferTail<?> logBufferTail = putIfAbsent(tail);
@@ -416,8 +476,8 @@ public final class LogBuffer {
    * finished. Logs are not duplicated. If a failure occur, the same chunk is retried next round.
    *
    * @param chunkMs how long each period of logs to be processed
-   * @param delay the delay between the termination of one execution and the commencement of the next.
-   * @param unit time unit of the delay parameter.
+   * @param delay   the delay between the termination of one execution and the commencement of the next.
+   * @param unit    time unit of the delay parameter.
    * @throws IOException
    */
   public void forwardTimeChunksWithFixedDelay(Tail<?> tail, long chunkMs, int delay, TimeUnit unit) throws IOException {
@@ -451,6 +511,7 @@ public final class LogBuffer {
     LogBufferTail<?> logBufferTail = checkNotNull(tails.get(cls), "Tail type not registered " + cls);
     return logBufferTail.getReadIndex();
   }
+
 
   public static class Builder {
     private ChronicleConfig config = ChronicleConfig.LARGE.clone();
