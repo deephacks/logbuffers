@@ -18,7 +18,7 @@ import java.util.LinkedList;
 /**
  * A list of logs.
  */
-public class Logs<T> {
+public final class Logs<T> {
 
   /** sequentially ordered logs according to index and timestamp */
   private LinkedList<Log<T>> logs = new LinkedList<>();
@@ -59,8 +59,11 @@ public class Logs<T> {
     return logs.getFirst().get();
   }
 
+  /**
+   * @return the first log
+   */
   public RawLog getFirstLog() {
-    return logs.getFirst().getRaw();
+    return logs.getFirst().getLog();
   }
 
   /**
@@ -71,10 +74,10 @@ public class Logs<T> {
   }
 
   /**
-   * @return the last log contained in this list of logs
+   * @return the last log
    */
   public RawLog getLastLog() {
-    return logs.getLast().getRaw();
+    return logs.getLast().getLog();
   }
 
   /**
@@ -84,6 +87,9 @@ public class Logs<T> {
     return logs.size();
   }
 
+  /**
+   * @return if logs are empty
+   */
   public boolean isEmpty() {
     return logs.isEmpty();
   }

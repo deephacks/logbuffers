@@ -120,7 +120,7 @@ public class LogBufferTailChunkTest {
       PageViews pageViews = new PageViews(logs.getFirstLog().getTimestamp(), logs.getLastLog().getTimestamp());
       for (Log<PageView> pageView : logs.getLogs()) {
         pageViews.increment(pageView.get().getUrl(), 1);
-        RawLog log = pageView.getRaw();
+        RawLog log = pageView.getLog();
         if (reads.putIfAbsent(log.getIndex(), pageView.get()) != null) {
           throw new RuntimeException("Duplicate read index!");
         }

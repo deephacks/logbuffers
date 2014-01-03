@@ -1,18 +1,29 @@
 package org.deephacks.logbuffers;
 
-public class Log<T> {
-  private RawLog rawLog;
-  private T object;
+/**
+ * Container for the object and the log.
+ *
+ * @param <T>
+ */
+public final class Log<T> {
+  private final RawLog rawLog;
+  private final T object;
 
-  public Log(RawLog rawLog, T object) {
+  Log(RawLog rawLog, T object) {
     this.rawLog = rawLog;
     this.object = object;
   }
 
-  public RawLog getRaw() {
+  /**
+   * @return the log
+   */
+  public RawLog getLog() {
     return rawLog;
   }
 
+  /**
+   * @return the object
+   */
   public T get() {
     return object;
   }
