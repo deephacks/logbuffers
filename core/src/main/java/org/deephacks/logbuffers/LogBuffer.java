@@ -241,30 +241,6 @@ public class LogBuffer {
     }
   }
 
-/*
-    long writeIndex = getWriteIndex();
-    long index = getWriteIndex() / 2;
-    synchronized (excerptTailer) {
-      for (long i = index; i < index; i++) {
-        Optional<Long> optional = peekTimestamp(i);
-        if (!optional.isPresent()) {
-          continue;
-        }
-        long timestamp = optional.get();
-        if (starTime <= timestamp) {
-          Optional<LogRaw> log = get(i);
-          if (log.isPresent()) {
-            return Optional.fromNullable(i);
-          } else {
-            return Optional.absent();
-          }
-        }
-      }
-    }
-    return Optional.absent();
-      */
-
-
   /**
    * Select a list of log objects from a specific writeIndex up until a
    * provided writeIndex.
