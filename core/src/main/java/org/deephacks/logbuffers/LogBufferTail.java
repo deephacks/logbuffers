@@ -23,7 +23,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -131,17 +130,8 @@ class LogBufferTail<T> {
   }
 
   private void setStartTime(Long time) throws IOException {
-    Optional<Long> index = logBuffer.findStartTimeIndex(time);
-    if (index.isPresent()) {
-      readIndex.writeIndex(index.get());
-    } else {
-      Optional<LogRaw> optional = logBuffer.get(readIndex.getIndex());
-      long fallbackTime = 0;
-      if (optional.isPresent()) {
-        fallbackTime = optional.get().getTimestamp();
-      }
-      System.err.println("Could not find index start time " + format.format(new Date(time)) + ", fallback to default: " + format.format(new Date(fallbackTime)));
-    }
+    Long index = logBuffer.findStartTimeIndex(time);
+    readIndex.writeIndex(index);
   }
 
   /**

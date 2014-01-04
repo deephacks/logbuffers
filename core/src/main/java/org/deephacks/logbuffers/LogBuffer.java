@@ -45,7 +45,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * The physical separation of a log buffer is an implementation detail that the user
  * does not need to care about.
  */
-public final class LogBuffer {
+public class LogBuffer {
 
   private final Logger logger;
 
@@ -74,7 +74,7 @@ public final class LogBuffer {
 
   private LogSerializers serializers;
 
-  private LogBuffer(Builder builder) throws IOException {
+  protected LogBuffer(Builder builder) throws IOException {
     this.basePath = builder.basePath.or(DEFAULT_BASE_PATH);
     this.logger = Logger.getLogger(LogBuffer.class.getName() + "." + checkNotNull(basePath + "/writer"));
     this.rollingChronicle = new IndexedChronicle(basePath + "/data", builder.config);
@@ -194,16 +194,58 @@ public final class LogBuffer {
   }
 
   /**
-   * Return the index that closest to the provided time.
+   * Return the index closest to provided time.
    *
    * @param starTime time to search for.
    * @return closest matching index
    * @throws IOException
    */
-  public Optional<Long> findStartTimeIndex(long starTime) throws IOException {
+  public Long findStartTimeIndex(long starTime) throws IOException {
     long writeIndex = getWriteIndex();
     synchronized (excerptTailer) {
-      for (long i = 0; i < writeIndex; i++) {
+      long index = binarySearchStartTime(writeIndex, starTime);
+      while (index > 0 && index < (writeIndex - 1)) {
+        if (starTime <= get(index - 1).get().getTimestamp()) {
+          // index too far to the right
+          index--;
+        } else if (starTime > get(index).get().getTimestamp()) {
+          // index too far to the left
+          index++;
+        } else {
+          return index;
+        }
+      }
+      return index;
+    }
+  }
+
+  /**
+   * Search the closest index to start time using binary search.
+   */
+  private Long binarySearchStartTime(long writeIndex, long startTime) throws IOException {
+    long low = 0;
+    long high = writeIndex;
+    synchronized (excerptTailer) {
+      while (low < high) {
+        long mid = (low + high) >>> 1;
+        long timestamp = get(mid).get().getTimestamp();
+        if (timestamp < startTime)
+          low = mid + 1;
+        else if (timestamp > startTime)
+          high = mid - 1;
+        else {
+          return mid;
+        }
+      }
+      return low >= writeIndex ? writeIndex - 1 : low;
+    }
+  }
+
+/*
+    long writeIndex = getWriteIndex();
+    long index = getWriteIndex() / 2;
+    synchronized (excerptTailer) {
+      for (long i = index; i < index; i++) {
         Optional<Long> optional = peekTimestamp(i);
         if (!optional.isPresent()) {
           continue;
@@ -220,7 +262,8 @@ public final class LogBuffer {
       }
     }
     return Optional.absent();
-  }
+      */
+
 
   /**
    * Select a list of log objects from a specific writeIndex up until a
@@ -548,6 +591,11 @@ public final class LogBuffer {
 
     public Builder addSerializer(LogSerializer serializer) {
       serializers.addSerializer(serializer);
+      return this;
+    }
+
+    public Builder synchronousMode(boolean synchronousMode) {
+      config.synchronousMode(synchronousMode);
       return this;
     }
 
