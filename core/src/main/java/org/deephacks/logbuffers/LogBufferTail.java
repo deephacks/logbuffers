@@ -51,7 +51,7 @@ class LogBufferTail<T> {
     this.type = (Class<T>) getParameterizedType(tail.getClass(), Tail.class).get(0);
     this.readIndex = new Index(getTailId());
     if (schedule.getStarTime().isPresent()) {
-      setStartTime(schedule.getStarTime().get());
+      setStartReadTime(schedule.getStarTime().get());
     }
   }
 
@@ -84,7 +84,7 @@ class LogBufferTail<T> {
     return new TailForwardResult();
   }
 
-  protected void writeReadIndex(long index) throws IOException {
+  void writeReadIndex(long index) throws IOException {
     synchronized (readIndex) {
       readIndex.writeIndex(index);
     }
@@ -129,9 +129,10 @@ class LogBufferTail<T> {
     }
   }
 
-  private void setStartTime(Long time) throws IOException {
+  Long setStartReadTime(Long time) throws IOException {
     Long index = logBuffer.findStartTimeIndex(time);
-    readIndex.writeIndex(index);
+    writeReadIndex(index);
+    return index;
   }
 
   /**

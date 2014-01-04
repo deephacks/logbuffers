@@ -196,6 +196,9 @@ public class LogBuffer {
   /**
    * Return the index closest to provided time.
    *
+   * This is a very fast scan operation. Should find the index in less than
+   * a millisecond in a buffer with over 30 million logs.
+   *
    * @param startTime time to search for.
    * @return closest matching index
    * @throws IOException
@@ -229,7 +232,7 @@ public class LogBuffer {
     synchronized (excerptTailer) {
       while (low < high) {
         long mid = (low + high) >>> 1;
-        long timestamp = get(mid).get().getTimestamp();
+        long timestamp = peekTimestamp(mid).get();
         if (timestamp < startTime)
           low = mid + 1;
         else if (timestamp > startTime)
@@ -434,10 +437,31 @@ public class LogBuffer {
     return result;
   }
 
+  /**
+   * Forward the tail schedule manually.
+   *
+   * @param schedule schedule to forward
+   * @return result of forward operation.
+   * @throws IOException
+   */
   public <T> TailForwardResult forward(TailSchedule schedule) throws IOException {
     LogBufferTail<T> tailBuffer = putIfAbsent(schedule);
     return tailBuffer.forward();
   }
+
+  /**
+   * Reset the read time for the tail schedule.
+   *
+   * @param schedule the schedule to modify
+   * @param startTime start time of the read
+   * @return current read index
+   * @throws IOException
+   */
+  public Long setReadTime(TailSchedule schedule, long startTime) throws IOException {
+    LogBufferTail<?> tailBuffer = putIfAbsent(schedule);
+    return tailBuffer.setStartReadTime(startTime);
+  }
+
 
   /**
    * @return directory where this log buffer is stored

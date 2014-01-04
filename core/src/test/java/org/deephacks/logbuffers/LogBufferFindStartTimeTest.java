@@ -1,6 +1,7 @@
 package org.deephacks.logbuffers;
 
 import com.google.common.base.Optional;
+import com.google.common.base.Stopwatch;
 import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.junit.Before;
 import org.junit.Test;
@@ -8,6 +9,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
@@ -161,6 +163,46 @@ public class LogBufferFindStartTimeTest {
     assertArrayEquals(startTimeTail.logs.get(0).getContent(), log4.getContent());
   }
 
+  @Test
+  public void perf_test() throws Exception {
+    LogBuffer buffer = new Builder().basePath(LogUtil.tmpDir()).build();
+    Stopwatch stopwatch = new Stopwatch().start();
+    long oneMillionIndex = 1000000;
+    long oneMillionTimestamp = 0;
+    long prev = 0;
+    for (int i = 0; i < 10000000; i++) {
+      if (i == oneMillionIndex) {
+        oneMillionTimestamp = System.currentTimeMillis();
+      }
+      if (i % 1000000 == 0) {
+        System.out.println(i);
+      }
+      // check that index is sequential
+      long tmpIndex = buffer.write(new byte[]{1}).getIndex();
+      if (tmpIndex != 0) {
+        if (prev + 1 != tmpIndex) {
+          throw new IllegalArgumentException(prev + " " + tmpIndex);
+        }
+        prev = tmpIndex;
+      }
+    }
+    System.out.println(stopwatch.elapsed(TimeUnit.MICROSECONDS));
+    stopwatch = new Stopwatch().start();
+    Long index = buffer.findStartTimeIndex(0);
+    System.out.println("index " + index + " found in " +  stopwatch.elapsed(TimeUnit.MICROSECONDS) + " micros");
+    stopwatch = new Stopwatch().start();
+    index = buffer.findStartTimeIndex(System.currentTimeMillis());
+    System.out.println("index " + index + " found in " +  stopwatch.elapsed(TimeUnit.MICROSECONDS) + " micros");
+    for (int j = 0; j < 10; j++) {
+      stopwatch = new Stopwatch().start();
+      index = buffer.findStartTimeIndex(oneMillionTimestamp);
+      System.out.println("index " + index + " found in " +  stopwatch.elapsed(TimeUnit.MICROSECONDS) + " micros");
+      LogRaw log = buffer.get(index).get();
+      LogRaw oneMillionLog = buffer.get(oneMillionIndex).get();
+      assertThat(log.getTimestamp(), is(oneMillionLog.getTimestamp()));
+    }
+  }
+
   long timestamp() throws InterruptedException {
     Thread.sleep(10);
     long time = System.currentTimeMillis();
@@ -189,6 +231,11 @@ public class LogBufferFindStartTimeTest {
     @Override
     public <T> Optional<LogRaw> getNext(Class<T> cls, long index) throws IOException {
       return Optional.fromNullable(logs.get((int) index));
+    }
+
+    @Override
+    Optional<Long> peekTimestamp(long index) throws IOException {
+      return Optional.fromNullable(get(index).get().getTimestamp());
     }
   }
 
