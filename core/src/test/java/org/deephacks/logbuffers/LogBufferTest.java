@@ -104,7 +104,7 @@ public class LogBufferTest {
 
 
   @Test
-  public void test_set_starttime_to_zero() throws Exception {
+  public void test_set_starttime() throws Exception {
     long t1 = timestamp();
     RawLog log1 = logBuffer.write(c1);
 
@@ -120,7 +120,7 @@ public class LogBufferTest {
     long t5 = timestamp();
 
     StartTimeTail startTimeTail = new StartTimeTail();
-    // before any logs, should be first log which is 0
+    // time 0 which is before any logs, should revert back to read index 0
     TailSchedule schedule = TailSchedule.builder(startTimeTail).startTime(0).build();
     logBuffer.forward(schedule);
     assertThat(startTimeTail.logs.size(), is(4));
@@ -128,59 +128,31 @@ public class LogBufferTest {
     assertArrayEquals(startTimeTail.logs.get(1).getContent(), log2.getContent());
     assertArrayEquals(startTimeTail.logs.get(2).getContent(), log3.getContent());
     assertArrayEquals(startTimeTail.logs.get(3).getContent(), log4.getContent());
-  }
 
-  @Test
-  public void test_set_starttime_skip_logs() throws Exception {
-    long t1 = timestamp();
-    RawLog log1 = logBuffer.write(c1);
-
-    long t2 = timestamp();
-    RawLog log2 = logBuffer.write(c2);
-
-    long t3 = timestamp();
-    RawLog log3 = logBuffer.write(c3);
-
-    long t4 = timestamp();
-    RawLog log4 = logBuffer.write(c4);
-
-    long t5 = timestamp();
-
-    StartTimeTail startTimeTail = new StartTimeTail();
-    // skip up to t2
-    TailSchedule schedule = TailSchedule.builder(startTimeTail).startTime(t3).build();
+    // cancel tail, then skip up to t3
+    startTimeTail = new StartTimeTail();
+    logBuffer.cancel(StartTimeTail.class);
+    schedule = TailSchedule.builder(startTimeTail).startTime(t3).build();
     logBuffer.forward(schedule);
     assertThat(startTimeTail.logs.size(), is(2));
     assertArrayEquals(startTimeTail.logs.get(0).getContent(), log3.getContent());
     assertArrayEquals(startTimeTail.logs.get(1).getContent(), log4.getContent());
 
-  }
-
-  @Test
-  public void test_set_starttime_end() throws Exception {
-    long t1 = timestamp();
-    RawLog log1 = logBuffer.write(c1);
-
-    long t2 = timestamp();
-    RawLog log2 = logBuffer.write(c2);
-
-    long t3 = timestamp();
-    RawLog log3 = logBuffer.write(c3);
-
-    long t4 = timestamp();
-    RawLog log4 = logBuffer.write(c4);
-
-    long t5 = timestamp();
-
-    StartTimeTail startTimeTail = new StartTimeTail();
-    // after last, should revert back to read index which is 0
-    TailSchedule schedule = TailSchedule.builder(startTimeTail).startTime(Long.MAX_VALUE).build();
+    // cancel tail, then set to end of time which should revert back to last read index
+    // which should be at the end from previous forward operation
+    startTimeTail = new StartTimeTail();
+    schedule = TailSchedule.builder(startTimeTail).startTime(Long.MAX_VALUE).build();
     logBuffer.forward(schedule);
-    assertThat(startTimeTail.logs.size(), is(4));
-    assertArrayEquals(startTimeTail.logs.get(0).getContent(), log1.getContent());
-    assertArrayEquals(startTimeTail.logs.get(1).getContent(), log2.getContent());
-    assertArrayEquals(startTimeTail.logs.get(2).getContent(), log3.getContent());
-    assertArrayEquals(startTimeTail.logs.get(3).getContent(), log4.getContent());
+    assertThat(startTimeTail.logs.size(), is(0));
+
+    // cancel tail, then skip to timestamp of log4
+    startTimeTail = new StartTimeTail();
+    logBuffer.cancel(StartTimeTail.class);
+    schedule = TailSchedule.builder(startTimeTail).startTime(log4.getTimestamp()).build();
+    logBuffer.forward(schedule);
+    assertThat(startTimeTail.logs.size(), is(1));
+    assertArrayEquals(startTimeTail.logs.get(0).getContent(), log4.getContent());
+
   }
 
 
