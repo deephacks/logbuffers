@@ -1,6 +1,6 @@
 package org.deephacks.logbuffers.json;
 
-import org.deephacks.logbuffers.RawLog;
+import org.deephacks.logbuffers.LogRaw;
 import org.deephacks.logbuffers.LogBuffer;
 import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.deephacks.logbuffers.LogUtil;
@@ -104,23 +104,23 @@ public class JacksonLogBufferTest {
     assertThat(selectB.get(1), is(b2));
 
     // select all raw logs
-    List<RawLog> select = logBuffer.select(0);
+    List<LogRaw> select = logBuffer.select(0);
     assertThat(select.size(), is(4));
   }
 
   @Test
   public void test_write_read_period() throws Exception {
     long t1 = timestamp();
-    RawLog al1 = logBuffer.write(a1);
+    LogRaw al1 = logBuffer.write(a1);
 
     long t2 = timestamp();
-    RawLog bl1 = logBuffer.write(b1);
+    LogRaw bl1 = logBuffer.write(b1);
 
     long t3 = timestamp();
-    RawLog al2 = logBuffer.write(a2);
+    LogRaw al2 = logBuffer.write(a2);
 
     long t4 = timestamp();
-    RawLog bl2 = logBuffer.write(b2);
+    LogRaw bl2 = logBuffer.write(b2);
 
     long t5 = timestamp();
 

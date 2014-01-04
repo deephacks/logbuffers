@@ -14,7 +14,7 @@
 package org.deephacks.logbuffers;
 
 import com.google.common.base.Optional;
-import org.deephacks.logbuffers.ForwardResult.ScheduleAgain;
+import org.deephacks.logbuffers.TailForwardResult.ScheduleAgain;
 
 import javax.lang.model.type.TypeVariable;
 import java.io.IOException;
@@ -68,21 +68,21 @@ class LogBufferTail<T> {
    *
    * @throws IOException
    */
-  ForwardResult forward() throws IOException {
+  TailForwardResult forward() throws IOException {
     /**
      * Fix paging mechanism to handle when read and write indexes are too far apart!
      */
     long currentWriteIndex = logBuffer.getWriteIndex();
     long currentReadIndex = getReadIndex();
-    Optional<RawLog> currentLog = logBuffer.getNext(type, currentReadIndex);
+    Optional<LogRaw> currentLog = logBuffer.getNext(type, currentReadIndex);
     if (!currentLog.isPresent()) {
-      return new ForwardResult();
+      return new TailForwardResult();
     }
     Logs<T> logs = logBuffer.select(type, currentReadIndex, currentWriteIndex);
     tail.process(logs);
     // only write the read index if tail was successful
     writeReadIndex(currentWriteIndex);
-    return new ForwardResult();
+    return new TailForwardResult();
   }
 
   protected void writeReadIndex(long index) throws IOException {
@@ -135,7 +135,7 @@ class LogBufferTail<T> {
     if (index.isPresent()) {
       readIndex.writeIndex(index.get());
     } else {
-      Optional<RawLog> optional = logBuffer.get(readIndex.getIndex());
+      Optional<LogRaw> optional = logBuffer.get(readIndex.getIndex());
       long fallbackTime = 0;
       if (optional.isPresent()) {
         fallbackTime = optional.get().getTimestamp();
@@ -164,7 +164,7 @@ class LogBufferTail<T> {
     @Override
     public void run() {
       try {
-        ForwardResult forwardResult = tail.forward();
+        TailForwardResult forwardResult = tail.forward();
         Optional<ScheduleAgain> scheduleAgain = forwardResult.scheduleAgain();
         if (scheduleAgain.isPresent()) {
           executor.schedule(this, scheduleAgain.get().getDelay(), scheduleAgain.get().getTimeUnit());

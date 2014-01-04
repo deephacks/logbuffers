@@ -72,7 +72,7 @@ public final class LogBuffer {
 
   private ConcurrentHashMap<Class<?>, LogBufferTail<?>> tails = new ConcurrentHashMap<>();
 
-  private Serializers serializers;
+  private LogSerializers serializers;
 
   private LogBuffer(Builder builder) throws IOException {
     this.basePath = builder.basePath.or(DEFAULT_BASE_PATH);
@@ -96,8 +96,8 @@ public final class LogBuffer {
    * @param content raw content.
    * @throws IOException
    */
-  public RawLog write(byte[] content) throws IOException {
-    return internalWrite(content, RawLog.DEFAULT_TYPE);
+  public LogRaw write(byte[] content) throws IOException {
+    return internalWrite(content, LogRaw.DEFAULT_TYPE);
   }
 
   /**
@@ -107,21 +107,21 @@ public final class LogBuffer {
    * @return the log that was created.
    * @throws IOException
    */
-  public RawLog write(Object object) throws IOException {
+  public LogRaw write(Object object) throws IOException {
     Class<?> cls = object.getClass();
-    ObjectLogSerializer serializer = serializers.getSerializer(cls);
+    LogSerializer serializer = serializers.getSerializer(cls);
     byte[] content = serializer.serialize(object);
     return internalWrite(content, serializers.getType(cls));
   }
 
-  private RawLog internalWrite(byte[] content, long type) throws IOException {
+  private LogRaw internalWrite(byte[] content, long type) throws IOException {
     // single writer is required in order append to file since there is
     // only one file written to at a given time. Also for generating unique
     // sequential indexes and sequential timestamps.
     synchronized (excerptAppender) {
-      RawLog log = new RawLog(type, content);
+      LogRaw log = new LogRaw(type, content);
       long index = log.write(excerptAppender);
-      return new RawLog(log, index);
+      return new LogRaw(log, index);
     }
   }
 
@@ -133,21 +133,21 @@ public final class LogBuffer {
    * @return A list of raw object logs.
    * @throws IOException
    */
-  public List<RawLog> select(long fromIndex) throws IOException {
+  public List<LogRaw> select(long fromIndex) throws IOException {
     long writeIdx = getWriteIndex();
     return select(fromIndex, writeIdx);
   }
 
-  Optional<RawLog> get(long index) throws IOException {
+  Optional<LogRaw> get(long index) throws IOException {
     synchronized (excerptTailer) {
-      return RawLog.read(excerptTailer, index);
+      return LogRaw.read(excerptTailer, index);
     }
   }
 
   /**
    * Get the next forward index of specified type.
    */
-  public <T> Optional<RawLog> getNext(Class<T> cls, long index) throws IOException {
+  public <T> Optional<LogRaw> getNext(Class<T> cls, long index) throws IOException {
     synchronized (excerptTailer) {
       long writeIndex = getWriteIndex();
       while (index < writeIndex) {
@@ -156,8 +156,8 @@ public final class LogBuffer {
           continue;
         }
         long type = optional.get();
-        if (type != RawLog.DEFAULT_TYPE) {
-          ObjectLogSerializer serializer = serializers.getSerializer(type);
+        if (type != LogRaw.DEFAULT_TYPE) {
+          LogSerializer serializer = serializers.getSerializer(type);
           Class<?> found = serializer.getMapping().get(type);
           if (cls.isAssignableFrom(found)) {
             return get(index - 1);
@@ -175,17 +175,17 @@ public final class LogBuffer {
    */
   Optional<Long> peekTimestamp(long index) throws IOException {
     synchronized (excerptTailer) {
-      return RawLog.peekTimestamp(excerptTailer, index);
+      return LogRaw.peekTimestamp(excerptTailer, index);
     }
   }
 
   Optional<Long> peekType(long index) throws IOException {
     synchronized (excerptTailer) {
-      return RawLog.peekType(excerptTailer, index);
+      return LogRaw.peekType(excerptTailer, index);
     }
   }
 
-  Optional<RawLog> getLatestWrite() throws IOException {
+  Optional<LogRaw> getLatestWrite() throws IOException {
     long index = getWriteIndex();
     if (index == 0) {
       return get(0);
@@ -210,7 +210,7 @@ public final class LogBuffer {
         }
         long timestamp = optional.get();
         if (starTime <= timestamp) {
-          Optional<RawLog> log = get(i);
+          Optional<LogRaw> log = get(i);
           if (log.isPresent()) {
             return Optional.fromNullable(i);
           } else {
@@ -231,13 +231,13 @@ public final class LogBuffer {
    * @return A list of raw object logs.
    * @throws IOException
    */
-  public List<RawLog> select(long fromIndex, long toIndex) throws IOException {
+  public List<LogRaw> select(long fromIndex, long toIndex) throws IOException {
     Preconditions.checkArgument(fromIndex <= toIndex, "from must be less than to");
-    List<RawLog> messages = new ArrayList<>();
+    List<LogRaw> messages = new ArrayList<>();
     synchronized (excerptTailer) {
       long read = fromIndex;
       while (read < toIndex) {
-        Optional<RawLog> optional = get(read++);
+        Optional<LogRaw> optional = get(read++);
         if (!optional.isPresent()) {
           break;
         }
@@ -256,7 +256,7 @@ public final class LogBuffer {
    * @return list of matching logs
    * @throws IOException
    */
-  public List<RawLog> selectBackward(long fromTimeMs, long toTimeMs) throws IOException {
+  public List<LogRaw> selectBackward(long fromTimeMs, long toTimeMs) throws IOException {
     return selectBackward(getWriteIndex() - 1, fromTimeMs, toTimeMs);
   }
 
@@ -269,7 +269,7 @@ public final class LogBuffer {
    * @return list of matching logs
    * @throws IOException
    */
-  public List<RawLog> selectForward(long fromTimeMs, long toTimeMs) throws IOException {
+  public List<LogRaw> selectForward(long fromTimeMs, long toTimeMs) throws IOException {
     return selectForward(getWriteIndex() - 1, fromTimeMs, toTimeMs);
   }
 
@@ -284,9 +284,9 @@ public final class LogBuffer {
    * @return list of matching logs
    * @throws IOException
    */
-  public List<RawLog> selectBackward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
+  public List<LogRaw> selectBackward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
-    LinkedList<RawLog> messages = new LinkedList<>();
+    LinkedList<LogRaw> messages = new LinkedList<>();
     synchronized (excerptTailer) {
       for (long i = fromIndex; i > -1; i--) {
         Optional<Long> optional = peekTimestamp(i);
@@ -318,9 +318,9 @@ public final class LogBuffer {
    * @return list of matching logs
    * @throws IOException
    */
-  public List<RawLog> selectForward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
+  public List<LogRaw> selectForward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
-    LinkedList<RawLog> messages = new LinkedList<>();
+    LinkedList<LogRaw> messages = new LinkedList<>();
     long writeIndex = getWriteIndex();
     synchronized (excerptTailer) {
       for (long i = fromIndex; i < writeIndex; i++) {
@@ -364,7 +364,7 @@ public final class LogBuffer {
    * @throws IOException
    */
   public <T> Logs<T> select(Class<T> type, long fromIndex, long toIndex) throws IOException {
-    List<RawLog> logs = select(fromIndex, toIndex);
+    List<LogRaw> logs = select(fromIndex, toIndex);
     return convert(type, logs);
   }
 
@@ -376,7 +376,7 @@ public final class LogBuffer {
    * {@link #selectBackward(long, long, long)}
    */
   public <T> Logs<T> selectBackward(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
-    final List<RawLog> logs = selectBackward(fromTimeMs, toTimeMs);
+    final List<LogRaw> logs = selectBackward(fromTimeMs, toTimeMs);
     return convert(type, logs);
   }
 
@@ -388,15 +388,15 @@ public final class LogBuffer {
    * {@link #selectForward(Class, long, long, long)}
    */
   public <T> Logs<T> selectForward(Class<T> type, long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
-    final List<RawLog> logs = selectForward(fromIndex, fromTimeMs, toTimeMs);
+    final List<LogRaw> logs = selectForward(fromIndex, fromTimeMs, toTimeMs);
     return convert(type, logs);
   }
 
-  private <T> Logs<T> convert(Class<T> type, List<RawLog> logs) {
+  private <T> Logs<T> convert(Class<T> type, List<LogRaw> logs) {
     Logs<T> result = new Logs<>();
-    for (RawLog log : logs) {
-      if (log.getType() != RawLog.DEFAULT_TYPE) {
-        ObjectLogSerializer serializer = serializers.getSerializer(log.getType());
+    for (LogRaw log : logs) {
+      if (log.getType() != LogRaw.DEFAULT_TYPE) {
+        LogSerializer serializer = serializers.getSerializer(log.getType());
         if (serializer == null) {
           throw new IllegalStateException("No serializer found for type " + log.getType());
         }
@@ -406,7 +406,7 @@ public final class LogBuffer {
           result.put(object, log);
         }
       } else {
-        if (type.isAssignableFrom(RawLog.class)) {
+        if (type.isAssignableFrom(LogRaw.class)) {
           result.put((T) log, log);
         }
       }
@@ -414,7 +414,7 @@ public final class LogBuffer {
     return result;
   }
 
-  public <T> ForwardResult forward(TailSchedule schedule) throws IOException {
+  public <T> TailForwardResult forward(TailSchedule schedule) throws IOException {
     LogBufferTail<T> tailBuffer = putIfAbsent(schedule);
     return tailBuffer.forward();
   }
@@ -535,7 +535,7 @@ public final class LogBuffer {
   public static class Builder {
     private ChronicleConfig config = ChronicleConfig.LARGE.clone();
     private Optional<String> basePath = Optional.absent();
-    private Serializers serializers = new Serializers();
+    private LogSerializers serializers = new LogSerializers();
 
     public Builder() {
       config.indexFileExcerpts(Short.MAX_VALUE);
@@ -546,7 +546,7 @@ public final class LogBuffer {
       return this;
     }
 
-    public Builder addSerializer(ObjectLogSerializer serializer) {
+    public Builder addSerializer(LogSerializer serializer) {
       serializers.addSerializer(serializer);
       return this;
     }

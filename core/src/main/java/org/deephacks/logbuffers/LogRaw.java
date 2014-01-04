@@ -23,7 +23,7 @@ import java.util.Arrays;
 /**
  * A raw log.
  */
-public final class RawLog {
+public final class LogRaw {
   /** default type if no type is specified */
   public static long DEFAULT_TYPE = 1;
 
@@ -39,7 +39,7 @@ public final class RawLog {
   /** unique sequential index number (position/offset) */
   private final long index;
 
-  RawLog(Long type, byte[] content, long timestamp, long index) {
+  LogRaw(Long type, byte[] content, long timestamp, long index) {
     Preconditions.checkArgument(type != 0, "Type cannot be 0");
     this.type = type;
     this.content = content;
@@ -47,15 +47,15 @@ public final class RawLog {
     this.index = index;
   }
 
-  RawLog(byte[] content) {
+  LogRaw(byte[] content) {
     this(DEFAULT_TYPE, content, System.currentTimeMillis(), DEFAULT_TYPE);
   }
 
-  RawLog(long type, byte[] content) {
+  LogRaw(long type, byte[] content) {
     this(type, content, System.currentTimeMillis(), DEFAULT_TYPE);
   }
 
-  RawLog(RawLog log, long index) {
+  LogRaw(LogRaw log, long index) {
     this(log.getType(), log.getContent(), log.getTimestamp(), index);
   }
 
@@ -103,7 +103,7 @@ public final class RawLog {
     return index;
   }
 
-  static Optional<RawLog> read(ExcerptTailer tailer, long index) {
+  static Optional<LogRaw> read(ExcerptTailer tailer, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
     tailer.index(index);
     long timestamp = tailer.readLong();
@@ -114,7 +114,7 @@ public final class RawLog {
     if (type == 0) {
       return Optional.absent();
     }
-    return Optional.fromNullable(new RawLog(type, message, timestamp, index));
+    return Optional.fromNullable(new LogRaw(type, message, timestamp, index));
   }
 
   static Optional<Long> peekTimestamp(ExcerptTailer tailer, long index) {
@@ -143,7 +143,7 @@ public final class RawLog {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
-    RawLog log = (RawLog) o;
+    LogRaw log = (LogRaw) o;
 
     if (index != log.index) return false;
     if (timestamp != log.timestamp) return false;
@@ -164,7 +164,7 @@ public final class RawLog {
 
   @Override
   public String toString() {
-    return "RawLog{" +
+    return "LogRaw{" +
             "index=" + index +
             ", timestamp=" + timestamp +
             ", type=" + type +

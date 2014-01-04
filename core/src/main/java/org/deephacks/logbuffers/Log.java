@@ -6,10 +6,10 @@ package org.deephacks.logbuffers;
  * @param <T>
  */
 public final class Log<T> {
-  private final RawLog rawLog;
+  private final LogRaw rawLog;
   private final T object;
 
-  Log(RawLog rawLog, T object) {
+  Log(LogRaw rawLog, T object) {
     this.rawLog = rawLog;
     this.object = object;
   }
@@ -17,7 +17,7 @@ public final class Log<T> {
   /**
    * @return the log
    */
-  public RawLog getLog() {
+  public LogRaw getLog() {
     return rawLog;
   }
 

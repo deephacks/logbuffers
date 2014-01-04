@@ -4,7 +4,7 @@ package org.deephacks.logbuffers.protobuf;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.protobuf.Message;
-import org.deephacks.logbuffers.ObjectLogSerializer;
+import org.deephacks.logbuffers.LogSerializer;
 import org.deephacks.logbuffers.protobuf.ProtoLog.PageView;
 import org.deephacks.logbuffers.protobuf.ProtoLog.Visit;
 
@@ -12,7 +12,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ProtobufSerializer implements ObjectLogSerializer {
+public class ProtobufSerializer implements LogSerializer {
 
   private BiMap<Long, Class<?>> mapping = HashBiMap.create();
   private Map<Long, Method> methodCache = new HashMap<>();

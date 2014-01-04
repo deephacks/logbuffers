@@ -41,18 +41,18 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
   }
 
   @Override
-  ForwardResult forward() throws IOException {
+  TailForwardResult forward() throws IOException {
     // fetch latest written log to determine how far ahead the
     // writer index is so tail can speed up if backlog is too big.
-    Optional<RawLog> latestWrite = logBuffer.getLatestWrite();
+    Optional<LogRaw> latestWrite = logBuffer.getLatestWrite();
     if (!latestWrite.isPresent()) {
-      return new ForwardResult();
+      return new TailForwardResult();
     }
     // the index that was written by previous tail acknowledgement
     long currentReadIndex = getReadIndex();
-    Optional<RawLog> currentLog = logBuffer.getNext(type, currentReadIndex);
+    Optional<LogRaw> currentLog = logBuffer.getNext(type, currentReadIndex);
     if (!currentLog.isPresent()) {
-      return new ForwardResult();
+      return new TailForwardResult();
     }
     // pick the next log by trying to select fixed chunk period
     long fixedFrom = fix(currentLog.get().getTimestamp());
@@ -60,7 +60,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     // do not process ahead of time, meaning tail will not try process
     // logs until the chunkMs have passed since the present.
     if (fixedTo > System.currentTimeMillis()) {
-      return new ForwardResult();
+      return new TailForwardResult();
     }
 
     // start directly at index where processing ended previous round go forward in time
@@ -68,18 +68,18 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
 
     // don't call tail if there are no logs
     if (logs.isEmpty()) {
-      return new ForwardResult();
+      return new TailForwardResult();
     }
     // prepare the next read index BEFORE we hand over logs to tail
-    RawLog lastRead = logs.getLastLog();
+    LogRaw lastRead = logs.getLastLog();
     long lastReadIndex = lastRead.getIndex();
     // prepare result
-    ForwardResult result = new ForwardResult();
+    TailForwardResult result = new TailForwardResult();
     if (lastRead.getTimestamp() < latestWrite.get().getTimestamp()) {
       // alter the result to indicate that there are already more logs
       // to process after this round have been executed. Hence we can
       // act quickly and process these as fast as possible, if needed.
-      result = ForwardResult.scheduleAgain(rescheduleDelay, rescheduleTimeUnit);
+      result = TailForwardResult.scheduleAgain(rescheduleDelay, rescheduleTimeUnit);
     }
     try {
       // ready to process logs. ignore any exceptions since the LogBuffer
@@ -91,13 +91,13 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       writeHumanReadableTime(lastRead);
     } catch (Exception e) {
       // cancel any immediate scheduling if log processing failed
-      result = new ForwardResult();
+      result = new TailForwardResult();
       System.err.println(e.getMessage());
     }
     return result;
   }
 
-  private void writeHumanReadableTime(RawLog lastRead) {
+  private void writeHumanReadableTime(LogRaw lastRead) {
     try {
       StringBuilder sb = new StringBuilder();
       sb.append(format.format(new Date(lastRead.getTimestamp()))).append(' ');

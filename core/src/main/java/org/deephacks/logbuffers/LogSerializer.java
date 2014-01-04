@@ -25,7 +25,7 @@ import com.google.common.collect.BiMap;
  * 10000 logs/sec. This is roughly 0.5MB per sec (or 1.8 GB per day) of wasted
  * latency, space and processing power.
  */
-public interface ObjectLogSerializer {
+public interface LogSerializer {
 
   /**
    * Get the unique number mapped to a specific class.

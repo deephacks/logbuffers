@@ -18,20 +18,20 @@ import com.google.common.base.Optional;
 
 import java.util.concurrent.TimeUnit;
 
-class ForwardResult {
+class TailForwardResult {
 
   private Optional<ScheduleAgain> scheduleAgain = Optional.absent();
 
-  ForwardResult() {
+  TailForwardResult() {
 
   }
 
-  ForwardResult(ScheduleAgain scheduleAgain) {
+  TailForwardResult(ScheduleAgain scheduleAgain) {
     this.scheduleAgain = Optional.fromNullable(scheduleAgain);
   }
 
-  public static ForwardResult scheduleAgain(long delay, TimeUnit unit) {
-    return new ForwardResult(new ScheduleAgain(delay, unit));
+  public static TailForwardResult scheduleAgain(long delay, TimeUnit unit) {
+    return new TailForwardResult(new ScheduleAgain(delay, unit));
   }
 
   Optional<ScheduleAgain> scheduleAgain() {

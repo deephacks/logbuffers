@@ -20,12 +20,12 @@ import com.google.common.collect.HashBiMap;
 import java.util.HashMap;
 import java.util.Map;
 
-class Serializers {
-  private Map<Long, ObjectLogSerializer> typeToSerializer = new HashMap<>();
-  private Map<Class<?>, ObjectLogSerializer> classToSerializer = new HashMap<>();
+class LogSerializers {
+  private Map<Long, LogSerializer> typeToSerializer = new HashMap<>();
+  private Map<Class<?>, LogSerializer> classToSerializer = new HashMap<>();
   private BiMap<Long, Class<?>> mapping = HashBiMap.create();
 
-  void addSerializer(ObjectLogSerializer serializer) {
+  void addSerializer(LogSerializer serializer) {
     BiMap<Long, Class<?>> mapping = serializer.getMapping();
     for (Long type : mapping.keySet()) {
       if (typeToSerializer.containsKey(type)) {
@@ -41,11 +41,11 @@ class Serializers {
     }
   }
 
-  ObjectLogSerializer getSerializer(Long type) {
+  LogSerializer getSerializer(Long type) {
     return typeToSerializer.get(type);
   }
 
-  ObjectLogSerializer getSerializer(Class<?> cls) {
+  LogSerializer getSerializer(Class<?> cls) {
     return classToSerializer.get(cls);
   }
 

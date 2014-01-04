@@ -26,7 +26,7 @@ public final class Logs<T> {
   /**
    * the buffer is responsible for putting the logs in the correct order
    */
-  void put(T object, RawLog log) {
+  void put(T object, LogRaw log) {
     logs.add(new Log<>(log, object));
   }
 
@@ -62,7 +62,7 @@ public final class Logs<T> {
   /**
    * @return the first log
    */
-  public RawLog getFirstLog() {
+  public LogRaw getFirstLog() {
     return logs.getFirst().getLog();
   }
 
@@ -76,7 +76,7 @@ public final class Logs<T> {
   /**
    * @return the last log
    */
-  public RawLog getLastLog() {
+  public LogRaw getLastLog() {
     return logs.getLast().getLog();
   }
 

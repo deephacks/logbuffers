@@ -5,9 +5,9 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import org.deephacks.logbuffers.LogSerializer;
 import org.deephacks.logbuffers.LogUtil;
 import org.deephacks.logbuffers.Logs;
-import org.deephacks.logbuffers.ObjectLogSerializer;
 import org.deephacks.logbuffers.Tail;
 
 import java.io.IOException;
@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-public class JacksonSerializer implements ObjectLogSerializer {
+public class JacksonSerializer implements LogSerializer {
 
   private BiMap<Long, Class<?>> mapping = HashBiMap.create();
 

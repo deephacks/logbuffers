@@ -37,13 +37,13 @@ public class LogBufferTest {
   @Test
   public void test_write_read() throws IOException {
     // one log
-    RawLog log1 = logBuffer.write(c1);
+    LogRaw log1 = logBuffer.write(c1);
 
-    List<RawLog> select = logBuffer.select(0);
+    List<LogRaw> select = logBuffer.select(0);
     assertArrayEquals(select.get(0).getContent(), log1.getContent());
 
     // write another
-    RawLog log2 = logBuffer.write(c2);
+    LogRaw log2 = logBuffer.write(c2);
     select = logBuffer.select(0);
     assertThat(select.size(), is(2));
     assertArrayEquals(select.get(0).getContent(), log1.getContent());
@@ -61,20 +61,20 @@ public class LogBufferTest {
   @Test
   public void test_write_read_period() throws Exception {
     long t1 = timestamp();
-    RawLog log1 = logBuffer.write(c1);
+    LogRaw log1 = logBuffer.write(c1);
 
     long t2 = timestamp();
-    RawLog log2 = logBuffer.write(c2);
+    LogRaw log2 = logBuffer.write(c2);
 
     long t3 = timestamp();
-    RawLog log3 = logBuffer.write(c3);
+    LogRaw log3 = logBuffer.write(c3);
 
     long t4 = timestamp();
-    RawLog log4 = logBuffer.write(c4);
+    LogRaw log4 = logBuffer.write(c4);
 
     long t5 = timestamp();
 
-    List<RawLog> select = logBuffer.selectBackward(0, t1);
+    List<LogRaw> select = logBuffer.selectBackward(0, t1);
     assertThat(select.size(), is(0));
 
     select = logBuffer.selectBackward(t1, t2);
@@ -106,16 +106,16 @@ public class LogBufferTest {
   @Test
   public void test_set_starttime() throws Exception {
     long t1 = timestamp();
-    RawLog log1 = logBuffer.write(c1);
+    LogRaw log1 = logBuffer.write(c1);
 
     long t2 = timestamp();
-    RawLog log2 = logBuffer.write(c2);
+    LogRaw log2 = logBuffer.write(c2);
 
     long t3 = timestamp();
-    RawLog log3 = logBuffer.write(c3);
+    LogRaw log3 = logBuffer.write(c3);
 
     long t4 = timestamp();
-    RawLog log4 = logBuffer.write(c4);
+    LogRaw log4 = logBuffer.write(c4);
 
     long t5 = timestamp();
 
@@ -160,13 +160,13 @@ public class LogBufferTest {
   public void test_manual_forward() throws IOException {
     TailSchedule schedule = TailSchedule.builder(tail).build();
     // one log
-    RawLog log1 = logBuffer.write(c1);
+    LogRaw log1 = logBuffer.write(c1);
     logBuffer.forward(schedule);
     assertThat(tail.logs.size(), is(1));
     assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());
 
     // write another
-    RawLog log2 = logBuffer.write(c2);
+    LogRaw log2 = logBuffer.write(c2);
     logBuffer.forward(schedule);
     assertThat(tail.logs.size(), is(2));
     assertArrayEquals(tail.logs.get(1).getContent(), log2.getContent());
@@ -185,13 +185,13 @@ public class LogBufferTest {
     TailSchedule tailSchedule = TailSchedule.builder(tail).delay(500, TimeUnit.MILLISECONDS).build();
     logBuffer.forwardWithFixedDelay(tailSchedule);
     // one log
-    RawLog log1 = logBuffer.write(c1);
+    LogRaw log1 = logBuffer.write(c1);
     Thread.sleep(600);
     assertThat(tail.logs.size(), is(1));
     assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());
 
     // write another
-    RawLog log2 = logBuffer.write(c2);
+    LogRaw log2 = logBuffer.write(c2);
     Thread.sleep(600);
 
     assertThat(tail.logs.size(), is(2));
@@ -215,22 +215,22 @@ public class LogBufferTest {
     return time;
   }
 
-  public static class TailLog implements Tail<RawLog> {
+  public static class TailLog implements Tail<LogRaw> {
 
-    public List<RawLog> logs = new ArrayList<>();
+    public List<LogRaw> logs = new ArrayList<>();
 
     @Override
-    public void process(Logs<RawLog> logs) {
+    public void process(Logs<LogRaw> logs) {
       this.logs.addAll(logs.get());
     }
   }
 
-  public static class StartTimeTail implements Tail<RawLog> {
+  public static class StartTimeTail implements Tail<LogRaw> {
 
-    public List<RawLog> logs = new ArrayList<>();
+    public List<LogRaw> logs = new ArrayList<>();
 
     @Override
-    public void process(Logs<RawLog> logs) {
+    public void process(Logs<LogRaw> logs) {
       this.logs = logs.get();
     }
   }

@@ -137,7 +137,7 @@ public class LogBufferTailChunkTest {
       PageViews pageViews = new PageViews(logs.getFirstLog().getTimestamp(), logs.getLastLog().getTimestamp());
       for (Log<PageView> pageView : logs.getLogs()) {
         pageViews.increment(pageView.get().getUrl(), 1);
-        RawLog log = pageView.getLog();
+        LogRaw log = pageView.getLog();
         if (reads.putIfAbsent(log.getIndex(), pageView.get()) != null) {
           throw new RuntimeException("Duplicate read index!");
         }
@@ -176,7 +176,7 @@ public class LogBufferTailChunkTest {
                 LogUtil.sleep(1);
                 // protobuf object
                 PageView pageView = PageView.newBuilder().setUrl(LogUtil.randomUrl()).setValue(1).build();
-                RawLog log = buffer.write(pageView);
+                LogRaw log = buffer.write(pageView);
                 if (pageViewWrites.putIfAbsent(log.getIndex(), pageView) != null) {
                   throw new RuntimeException("Duplicate write index!");
                 }

@@ -28,12 +28,12 @@ public class ManualJvmCrashTest {
     Thread.sleep(30000);
   }
 
-  public static class RawLogTail implements Tail<RawLog> {
+  public static class RawLogTail implements Tail<LogRaw> {
 
     @Override
-    public void process(Logs<RawLog> logs) {
+    public void process(Logs<LogRaw> logs) {
       StringBuilder sb = new StringBuilder();
-      for (RawLog l : logs.get()) {
+      for (LogRaw l : logs.get()) {
         sb.append(l.getIndex()).append(",");
       }
       System.out.println(sb.toString());
