@@ -52,9 +52,10 @@ public class LogBufferTailConcurrencyTest {
       });
     }
     latch.await();
+    TailSchedule schedule = TailSchedule.builder(tail).build();
     System.out.println("Wrote " + numLogs + " in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
     stopwatch = new Stopwatch().start();
-    logBuffer.forward(tail);
+    logBuffer.forward(schedule);
     System.out.println("Read " + numLogs + " in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
     assertThat(tail.logs.size(), is(numLogs));
     // check uniqueness and ordering

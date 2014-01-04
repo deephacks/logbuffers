@@ -23,7 +23,7 @@ public class LogBufferTest {
   byte[] c4 = LogUtil.randomLog();
 
   @Before
-  public void before() throws IOException {
+  public void before() throws Exception {
     logBuffer = new Builder().basePath(LogUtil.tmpDir()).build();
     tail = new TailLog();
   }
@@ -100,34 +100,113 @@ public class LogBufferTest {
     assertThat(select.size(), is(2));
     assertArrayEquals(select.get(0).getContent(), log2.getContent());
     assertArrayEquals(select.get(1).getContent(), log3.getContent());
+  }
 
+
+  @Test
+  public void test_set_starttime_to_zero() throws Exception {
+    long t1 = timestamp();
+    RawLog log1 = logBuffer.write(c1);
+
+    long t2 = timestamp();
+    RawLog log2 = logBuffer.write(c2);
+
+    long t3 = timestamp();
+    RawLog log3 = logBuffer.write(c3);
+
+    long t4 = timestamp();
+    RawLog log4 = logBuffer.write(c4);
+
+    long t5 = timestamp();
+
+    StartTimeTail startTimeTail = new StartTimeTail();
+    // before any logs, should be first log which is 0
+    TailSchedule schedule = TailSchedule.builder(startTimeTail).startTime(0).build();
+    logBuffer.forward(schedule);
+    assertThat(startTimeTail.logs.size(), is(4));
+    assertArrayEquals(startTimeTail.logs.get(0).getContent(), log1.getContent());
+    assertArrayEquals(startTimeTail.logs.get(1).getContent(), log2.getContent());
+    assertArrayEquals(startTimeTail.logs.get(2).getContent(), log3.getContent());
+    assertArrayEquals(startTimeTail.logs.get(3).getContent(), log4.getContent());
+  }
+
+  @Test
+  public void test_set_starttime_skip_logs() throws Exception {
+    long t1 = timestamp();
+    RawLog log1 = logBuffer.write(c1);
+
+    long t2 = timestamp();
+    RawLog log2 = logBuffer.write(c2);
+
+    long t3 = timestamp();
+    RawLog log3 = logBuffer.write(c3);
+
+    long t4 = timestamp();
+    RawLog log4 = logBuffer.write(c4);
+
+    long t5 = timestamp();
+
+    StartTimeTail startTimeTail = new StartTimeTail();
+    // skip up to t2
+    TailSchedule schedule = TailSchedule.builder(startTimeTail).startTime(t3).build();
+    logBuffer.forward(schedule);
+    assertThat(startTimeTail.logs.size(), is(2));
+    assertArrayEquals(startTimeTail.logs.get(0).getContent(), log3.getContent());
+    assertArrayEquals(startTimeTail.logs.get(1).getContent(), log4.getContent());
+
+  }
+
+  @Test
+  public void test_set_starttime_end() throws Exception {
+    long t1 = timestamp();
+    RawLog log1 = logBuffer.write(c1);
+
+    long t2 = timestamp();
+    RawLog log2 = logBuffer.write(c2);
+
+    long t3 = timestamp();
+    RawLog log3 = logBuffer.write(c3);
+
+    long t4 = timestamp();
+    RawLog log4 = logBuffer.write(c4);
+
+    long t5 = timestamp();
+
+    StartTimeTail startTimeTail = new StartTimeTail();
+    // after last, should revert back to read index which is 0
+    TailSchedule schedule = TailSchedule.builder(startTimeTail).startTime(Long.MAX_VALUE).build();
+    logBuffer.forward(schedule);
+    assertThat(startTimeTail.logs.size(), is(4));
+    assertArrayEquals(startTimeTail.logs.get(0).getContent(), log1.getContent());
+    assertArrayEquals(startTimeTail.logs.get(1).getContent(), log2.getContent());
+    assertArrayEquals(startTimeTail.logs.get(2).getContent(), log3.getContent());
+    assertArrayEquals(startTimeTail.logs.get(3).getContent(), log4.getContent());
   }
 
 
   @Test
   public void test_manual_forward() throws IOException {
-
+    TailSchedule schedule = TailSchedule.builder(tail).build();
     // one log
     RawLog log1 = logBuffer.write(c1);
-    logBuffer.forward(tail);
+    logBuffer.forward(schedule);
     assertThat(tail.logs.size(), is(1));
     assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());
 
     // write another
     RawLog log2 = logBuffer.write(c2);
-    logBuffer.forward(tail);
+    logBuffer.forward(schedule);
     assertThat(tail.logs.size(), is(2));
     assertArrayEquals(tail.logs.get(1).getContent(), log2.getContent());
 
     // write multiple
     log1 = logBuffer.write(c1);
     log2 = logBuffer.write(c2);
-    logBuffer.forward(tail);
+    logBuffer.forward(schedule);
     assertThat(tail.logs.size(), is(4));
     assertArrayEquals(tail.logs.get(2).getContent(), log1.getContent());
     assertArrayEquals(tail.logs.get(3).getContent(), log2.getContent());
   }
-
 
   @Test
   public void test_scheduled_forward() throws Exception {
@@ -171,6 +250,16 @@ public class LogBufferTest {
     @Override
     public void process(Logs<RawLog> logs) {
       this.logs.addAll(logs.get());
+    }
+  }
+
+  public static class StartTimeTail implements Tail<RawLog> {
+
+    public List<RawLog> logs = new ArrayList<>();
+
+    @Override
+    public void process(Logs<RawLog> logs) {
+      this.logs = logs.get();
     }
   }
 }

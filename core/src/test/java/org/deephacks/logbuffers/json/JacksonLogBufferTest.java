@@ -189,17 +189,19 @@ public class JacksonLogBufferTest {
 
   @Test
   public void test_manual_forward() throws IOException {
+    TailSchedule scheduleA = TailSchedule.builder(tailA).build();
+    TailSchedule scheduleB = TailSchedule.builder(tailB).build();
     // one log
     logBuffer.write(a1);
-    logBuffer.forward(tailA);
+    logBuffer.forward(scheduleA);
     assertThat(tailA.logs.size(), is(1));
     assertThat(tailA.logs.get(0), is(a1));
     assertThat(tailB.logs.size(), is(0));
 
     // write another
     logBuffer.write(b1);
-    logBuffer.forward(tailB);
-    logBuffer.forward(tailA);
+    logBuffer.forward(scheduleB);
+    logBuffer.forward(scheduleA);
     assertThat(tailA.logs.size(), is(1));
     assertThat(tailA.logs.get(0), is(a1));
     assertThat(tailB.logs.size(), is(1));
@@ -212,7 +214,7 @@ public class JacksonLogBufferTest {
     logBuffer.write(b2);
 
     // only forward A
-    logBuffer.forward(tailA);
+    logBuffer.forward(scheduleA);
     assertThat(tailA.logs.size(), is(3));
     assertThat(tailA.logs.get(1), is(a1));
     assertThat(tailA.logs.get(2), is(a2));
@@ -220,7 +222,7 @@ public class JacksonLogBufferTest {
     assertThat(tailB.logs.get(0), is(b1));
 
     // then B
-    logBuffer.forward(tailB);
+    logBuffer.forward(scheduleB);
     assertThat(tailA.logs.size(), is(3));
     assertThat(tailB.logs.size(), is(3));
     assertThat(tailA.logs.get(1), is(a1));
@@ -259,6 +261,7 @@ public class JacksonLogBufferTest {
 
   @Test
   public void test_forward_failure() throws Exception {
+
     final List<A> result = new ArrayList<>();
     Tail failTail = new Tail<A>() {
 
@@ -269,10 +272,11 @@ public class JacksonLogBufferTest {
       }
 
     };
+    TailSchedule schedule = TailSchedule.builder(failTail).build();
     logBuffer.write(a1);
     logBuffer.write(a2);
     try {
-      logBuffer.forward(failTail);
+      logBuffer.forward(schedule);
     } catch (IllegalArgumentException e) {
       // ignore
     }
@@ -281,7 +285,7 @@ public class JacksonLogBufferTest {
     assertThat(result.get(1), is(a2));
 
     try {
-      logBuffer.forward(failTail);
+      logBuffer.forward(schedule);
     } catch (IllegalArgumentException e) {
       // ignore
     }

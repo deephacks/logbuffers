@@ -6,6 +6,7 @@ import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.deephacks.logbuffers.LogUtil;
 import org.deephacks.logbuffers.Logs;
 import org.deephacks.logbuffers.Tail;
+import org.deephacks.logbuffers.TailSchedule;
 import org.deephacks.logbuffers.protobuf.ProtoLog.PageView;
 import org.deephacks.logbuffers.protobuf.ProtoLog.Visit;
 import org.junit.After;
@@ -72,19 +73,21 @@ public class ProtobufLogBufferTest {
 
   @Test
   public void test_write_tail_different_types() throws IOException {
+    TailSchedule visitSchedule = TailSchedule.builder(visitTail).build();
+    TailSchedule pageViewSchedule = TailSchedule.builder(pageViewTail).build();
 
     logBuffer.write(p1);
     logBuffer.write(v1);
     logBuffer.write(p2);
     logBuffer.write(v2);
 
-    logBuffer.forward(visitTail);
+    logBuffer.forward(visitSchedule);
     assertThat(visitTail.logs.size(), is(2));
     assertThat(pageViewTail.logs.size(), is(0));
     assertThat(visitTail.logs.get(0).getUrl(), is(v1.getUrl()));
     assertThat(visitTail.logs.get(1).getUrl(), is(v2.getUrl()));
 
-    logBuffer.forward(pageViewTail);
+    logBuffer.forward(pageViewSchedule);
     assertThat(visitTail.logs.size(), is(2));
     assertThat(pageViewTail.logs.size(), is(2));
     assertThat(pageViewTail.logs.get(0).getUrl(), is(p1.getUrl()));

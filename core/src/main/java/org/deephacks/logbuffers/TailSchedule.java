@@ -19,6 +19,8 @@ public class TailSchedule {
   private long backLogScheduleDelay;
   private TimeUnit backLogScheduleUnit;
 
+  private Optional<Long> starTime;
+
   private final Tail<?> tail;
 
   private TailSchedule(Builder<?> builder) {
@@ -27,6 +29,7 @@ public class TailSchedule {
     this.tail = Preconditions.checkNotNull(builder.tail);
     this.backLogScheduleDelay = builder.backLogScheduleDelay;
     this.backLogScheduleUnit = Optional.fromNullable(builder.backLogScheduleUnit).or(TimeUnit.MILLISECONDS);
+    this.starTime = Optional.fromNullable(builder.starTime);
   }
 
   public Tail<?> getTail() {
@@ -49,12 +52,18 @@ public class TailSchedule {
     return backLogScheduleUnit;
   }
 
+  public Optional<Long> getStarTime() {
+    return starTime;
+  }
+
   public static abstract class Builder<T extends Builder<T>> {
     private Integer delay;
     private TimeUnit unit;
 
     private long backLogScheduleDelay;
     private TimeUnit backLogScheduleUnit;
+
+    private Long starTime;
 
     private Tail<?> tail;
 
@@ -70,6 +79,14 @@ public class TailSchedule {
     public T delay(Integer delay, TimeUnit unit) {
       this.delay = delay;
       this.unit = unit;
+      return self();
+    }
+
+    /**
+     * Set the time from where the tail should start processing logs.
+     */
+    public T startTime(long startTime) {
+      this.starTime = startTime;
       return self();
     }
 

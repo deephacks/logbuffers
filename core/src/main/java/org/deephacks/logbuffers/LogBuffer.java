@@ -194,6 +194,35 @@ public final class LogBuffer {
   }
 
   /**
+   * Return the index that closest to the provided time.
+   *
+   * @param starTime time to search for.
+   * @return closest matching index
+   * @throws IOException
+   */
+  public Optional<Long> findStartTimeIndex(long starTime) throws IOException {
+    long writeIndex = getWriteIndex();
+    synchronized (excerptTailer) {
+      for (long i = 0; i < writeIndex; i++) {
+        Optional<Long> optional = peekTimestamp(i);
+        if (!optional.isPresent()) {
+          continue;
+        }
+        long timestamp = optional.get();
+        if (starTime <= timestamp) {
+          Optional<RawLog> log = get(i);
+          if (log.isPresent()) {
+            return Optional.fromNullable(i);
+          } else {
+            return Optional.absent();
+          }
+        }
+      }
+    }
+    return Optional.absent();
+  }
+
+  /**
    * Select a list of log objects from a specific writeIndex up until a
    * provided writeIndex.
    *
@@ -385,8 +414,8 @@ public final class LogBuffer {
     return result;
   }
 
-  public <T> ForwardResult forward(Tail<T> tail) throws IOException {
-    LogBufferTail<T> tailBuffer = putIfAbsent(tail);
+  public <T> ForwardResult forward(TailSchedule schedule) throws IOException {
+    LogBufferTail<T> tailBuffer = putIfAbsent(schedule);
     return tailBuffer.forward();
   }
 
@@ -457,7 +486,7 @@ public final class LogBuffer {
    * @param schedule the schedule description for the tail
    */
   public void forwardWithFixedDelay(TailSchedule schedule) throws IOException {
-    LogBufferTail<?> logBufferTail = putIfAbsent(schedule.getTail());
+    LogBufferTail<?> logBufferTail = putIfAbsent(schedule);
     logBufferTail.forwardWithFixedDelay(schedule.getDelay(), schedule.getUnit());
   }
 
@@ -474,8 +503,9 @@ public final class LogBuffer {
     logBufferTail.forwardWithFixedDelay(schedule.getDelay(), schedule.getUnit());
   }
 
-  private <T> LogBufferTail<T> putIfAbsent(Tail<?> tail) throws IOException {
-    LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTail<>(this, tail));
+  private <T> LogBufferTail<T> putIfAbsent(TailSchedule schedule) throws IOException {
+    Tail<?> tail = schedule.getTail();
+    LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTail<>(this, schedule));
     if (logBufferTail == null) {
       logBufferTail = tails.get(tail.getClass());
     }
@@ -501,7 +531,6 @@ public final class LogBuffer {
     LogBufferTail<?> logBufferTail = checkNotNull(tails.get(cls), "Tail type not registered " + cls);
     return logBufferTail.getReadIndex();
   }
-
 
   public static class Builder {
     private ChronicleConfig config = ChronicleConfig.LARGE.clone();

@@ -20,7 +20,6 @@ import org.deephacks.logbuffers.TailSchedule.TailScheduleChunk;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
@@ -28,14 +27,13 @@ import java.util.concurrent.TimeUnit;
  * Specialized tail that provide logs iteratively in chunks according to a certain period of time.
  */
 class LogBufferTailChunk<T> extends LogBufferTail<T> {
-  private static SimpleDateFormat FORMAT = new SimpleDateFormat("YYYY-MM-DD'T'HH:mm:ss:SSS");
   private long chunkMs;
   private File readTime;
   private long rescheduleDelay = 0;
   private TimeUnit rescheduleTimeUnit = TimeUnit.MILLISECONDS;
 
   LogBufferTailChunk(LogBuffer logBuffer, TailScheduleChunk schedule) throws IOException {
-    super(logBuffer, (Tail<T>) schedule.getTail());
+    super(logBuffer, schedule);
     this.chunkMs = schedule.getChunkMs();
     this.rescheduleDelay = schedule.getBackLogScheduleDelay();
     this.rescheduleTimeUnit = schedule.getBackLogScheduleUnit();
@@ -102,7 +100,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
   private void writeHumanReadableTime(RawLog lastRead) {
     try {
       StringBuilder sb = new StringBuilder();
-      sb.append(FORMAT.format(new Date(lastRead.getTimestamp()))).append(' ');
+      sb.append(format.format(new Date(lastRead.getTimestamp()))).append(' ');
       sb.append(lastRead.getTimestamp()).append(' ');
       sb.append(lastRead.getIndex()).append('\n');
       Files.write(sb.toString().getBytes(Charsets.UTF_8), readTime);

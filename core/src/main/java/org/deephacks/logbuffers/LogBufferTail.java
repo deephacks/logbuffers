@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -36,6 +38,7 @@ import java.util.concurrent.TimeUnit;
  * This process consumes all logs of any type.
  */
 class LogBufferTail<T> {
+  protected SimpleDateFormat format = new SimpleDateFormat("YYYY-MM-DD'T'HH:mm:ss:SSS");
   protected LogBuffer logBuffer;
   protected Class<T> type;
   protected Tail<T> tail;
@@ -43,11 +46,14 @@ class LogBufferTail<T> {
   private ScheduledFuture<?> scheduledFuture;
   private String tailId;
 
-  LogBufferTail(LogBuffer logBuffer, Tail<T> tail) throws IOException {
+  LogBufferTail(LogBuffer logBuffer, TailSchedule schedule) throws IOException {
     this.logBuffer = logBuffer;
-    this.tail = tail;
+    this.tail = (Tail<T>) schedule.getTail();
     this.type = (Class<T>) getParameterizedType(tail.getClass(), Tail.class).get(0);
     this.readIndex = new Index(getTailId());
+    if (schedule.getStarTime().isPresent()) {
+      setStartTime(schedule.getStarTime().get());
+    }
   }
 
   String getTailId() {
@@ -95,11 +101,11 @@ class LogBufferTail<T> {
     if (scheduledFuture != null) {
       return;
     }
-    scheduledFuture = this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailSchedule(this, logBuffer.getCachedExecutor()), 0, delay, unit);
+    scheduledFuture = this.logBuffer.getCachedExecutor().scheduleWithFixedDelay(new TailScheduler(this, logBuffer.getCachedExecutor()), 0, delay, unit);
   }
 
   public void forwardNow() {
-    this.logBuffer.getCachedExecutor().schedule(new TailSchedule(this, logBuffer.getCachedExecutor()), 0, TimeUnit.MILLISECONDS);
+    this.logBuffer.getCachedExecutor().schedule(new TailScheduler(this, logBuffer.getCachedExecutor()), 0, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -124,6 +130,20 @@ class LogBufferTail<T> {
     }
   }
 
+  private void setStartTime(Long time) throws IOException {
+    Optional<Long> index = logBuffer.findStartTimeIndex(time);
+    if (index.isPresent()) {
+      readIndex.writeIndex(index.get());
+    } else {
+      Optional<RawLog> optional = logBuffer.get(readIndex.getIndex());
+      long fallbackTime = 0;
+      if (optional.isPresent()) {
+        fallbackTime = optional.get().getTimestamp();
+      }
+      System.err.println("Could not find index start time " + format.format(new Date(time)) + ", fallback to default: " + format.format(new Date(fallbackTime)));
+    }
+  }
+
   /**
    * @throws IOException
    */
@@ -133,10 +153,10 @@ class LogBufferTail<T> {
     }
   }
 
-  private static final class TailSchedule implements Runnable {
+  private static final class TailScheduler implements Runnable {
     private LogBufferTail tail;
     private ScheduledExecutorService executor;
-    public TailSchedule(LogBufferTail tail, ScheduledExecutorService executor) {
+    public TailScheduler(LogBufferTail tail, ScheduledExecutorService executor) {
       this.tail = tail;
       this.executor = executor;
     }
