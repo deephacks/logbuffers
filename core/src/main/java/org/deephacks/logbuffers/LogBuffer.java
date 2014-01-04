@@ -196,19 +196,20 @@ public class LogBuffer {
   /**
    * Return the index closest to provided time.
    *
-   * @param starTime time to search for.
+   * @param startTime time to search for.
    * @return closest matching index
    * @throws IOException
    */
-  public Long findStartTimeIndex(long starTime) throws IOException {
+  public Long findStartTimeIndex(long startTime) throws IOException {
     long writeIndex = getWriteIndex();
     synchronized (excerptTailer) {
-      long index = binarySearchStartTime(writeIndex, starTime);
+      long index = binarySearchStartTime(writeIndex, startTime);
       while (index > 0 && index < (writeIndex - 1)) {
-        if (starTime <= get(index - 1).get().getTimestamp()) {
+        // pick the lowest index for logs that have exact same timestamp
+        if (startTime <= get(index - 1).get().getTimestamp()) {
           // index too far to the right
           index--;
-        } else if (starTime > get(index).get().getTimestamp()) {
+        } else if (startTime > get(index).get().getTimestamp()) {
           // index too far to the left
           index++;
         } else {
