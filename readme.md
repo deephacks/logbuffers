@@ -1,5 +1,6 @@
 ### logbuffers - fast persistent buffers for streaming data. 
 
+[![Build Status](https://travis-ci.org/deephacks/logbuffers.svg?branch=master)](https://travis-ci.org/deephacks/logbuffers)
 
 The purpose of logbuffers is to provide simple, reliable, low latency persistence buffers for high throughput data feeds. 
 
