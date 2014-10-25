@@ -74,7 +74,7 @@ class LogTail implements Tail<Log> {
 
 ### Object logs
 
-Logs can be written and read in any object format in the same way as the raw log buffer. Note that each
+Logs can be written and read in any object format (json, protobuf, avro, etc) in the same way as the raw log buffer. Note that each
 tail instance track its specific type ONLY. This is by design so that different log types can be processed and
 reported separately.
 
