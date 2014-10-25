@@ -4,6 +4,7 @@ import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -163,7 +164,7 @@ public class LogBufferFindStartTimeTest {
     assertArrayEquals(startTimeTail.logs.get(0).getContent(), log4.getContent());
   }
 
-  @Test
+  @Ignore
   public void perf_test() throws Exception {
     LogBuffer buffer = new Builder().basePath(LogUtil.tmpDir()).build();
     Stopwatch stopwatch = new Stopwatch().start();

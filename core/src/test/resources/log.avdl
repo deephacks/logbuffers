@@ -1,0 +1,17 @@
+@namespace("org.deephacks.logbuffers.avro")
+protocol LogbuffersProtocol {
+
+  record PageView {
+    string url;
+    int value;
+  }
+
+  record Visit {
+    string url;
+    int value;
+  }
+
+  record Message {
+    union {PageView, Visit} message = null;
+  }
+}

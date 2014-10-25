@@ -16,6 +16,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
+      <version>14.0</version>
     </dependency>
     <dependency>
       <groupId>net.openhft</groupId>
@@ -28,5 +29,47 @@
       <version>2.5.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.avro</groupId>
+      <artifactId>avro</artifactId>
+      <version>1.7.6</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.10</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.3.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
+
+  <!-- plugin messes up source directories for unknown reason
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro-maven-plugin</artifactId>
+        <version>1.7.7</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>idl-protocol</goal>
+            </goals>
+            <configuration>
+              <stringType>String</stringType>
+              <sourceDirectory>${project.basedir}/src/test/resources/</sourceDirectory>
+              <outputDirectory>${project.basedir}/src/test/java</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+  -->
 </project>
