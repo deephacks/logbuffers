@@ -114,6 +114,10 @@ public class LogBuffer {
     return internalWrite(content, serializers.getType(cls));
   }
 
+  void tryWrite(LogRaw log) {
+
+  }
+
   private LogRaw internalWrite(byte[] content, long type) throws IOException {
     // single writer is required in order append to file since there is
     // only one file written to at a given time. Also for generating unique

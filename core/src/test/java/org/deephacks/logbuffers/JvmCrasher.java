@@ -1,4 +1,4 @@
-package org.deephacks.logbuffers.util;
+package org.deephacks.logbuffers;
 
 import sun.misc.Unsafe;
 

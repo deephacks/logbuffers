@@ -2,8 +2,6 @@ package org.deephacks.logbuffers;
 
 import com.google.common.primitives.Longs;
 import org.deephacks.logbuffers.LogBuffer.Builder;
-import org.deephacks.logbuffers.util.JvmCrasher;
-import org.deephacks.logbuffers.util.PersistentCounter;
 
 import java.io.File;
 import java.util.Random;

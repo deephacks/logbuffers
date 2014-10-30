@@ -1,6 +1,4 @@
-package org.deephacks.logbuffers.util;
-
-import net.openhft.chronicle.SingleMappedFileCache;
+package org.deephacks.logbuffers;
 
 import java.io.File;
 import java.io.FileNotFoundException;
