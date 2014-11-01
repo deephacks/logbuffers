@@ -1,5 +1,6 @@
 package org.deephacks.logbuffers;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
@@ -66,16 +67,47 @@ public class DateRanges {
    * Get the start and stop index that belong to a certain time.
    */
   public long[] index(long time) {
-    long from = (time / interval) * indexesPerInterval;
-    long to = ((time + interval) / interval ) * indexesPerInterval - 1;
-    return new long[] {from, to};
+    return new long[] {startIndex(time), stopIndex(time)};
+  }
+
+  /**
+   * Get the last index that belong to a certain period
+   */
+  public long stopIndex(long time) {
+    return ((time + interval) / interval) * indexesPerInterval - 1;
+  }
+
+  /**
+   * Get the first index that belong to a certain period
+   */
+  public long startIndex(long time) {
+    return (time / interval) * indexesPerInterval;
+  }
+
+  /**
+   * Get the first index that belong to the formatted period
+   */
+  public long startIndex(String timeFormat) {
+    try {
+      Date date = format.parse(timeFormat);
+      return startIndex(date.getTime());
+    } catch (ParseException e) {
+      throw new IllegalArgumentException("Format not recognized " + timeFormat);
+    }
+  }
+
+  /**
+   * Get the first index of a certain interval index.
+   */
+  public long getFirstIndexOfIntervalIndex(long index) {
+    return index - (index % indexesPerInterval);
   }
 
   /**
    * Get the start time of certain index.
    */
   public long getStartTime(long index) {
-    long firstIndexOfInterval = index - (index % indexesPerInterval);
+    long firstIndexOfInterval = getFirstIndexOfIntervalIndex(index);
     return ((firstIndexOfInterval / indexesPerInterval) * interval);
   }
 
@@ -86,5 +118,9 @@ public class DateRanges {
     long time = getStartTime(index);
     Date date = new Date(time);
     return format.format(date);
+  }
+
+  public long nextStartIndex(long startIndex) {
+    return startIndex + indexesPerInterval;
   }
 }

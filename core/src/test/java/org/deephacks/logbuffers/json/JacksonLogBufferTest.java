@@ -36,13 +36,19 @@ public class JacksonLogBufferTest {
 
   B b1 = randomB(1);
   B b2 = randomB(2);
+  String basePath;
 
   @Before
   public void before() throws IOException {
+    if (logBuffer != null) {
+      logBuffer.close();
+    }
+    this.basePath = LogUtil.cleanupTmpDir();
     tailA = new TailA();
     tailB = new TailB();
-    logBuffer = new Builder()
-            .basePath(LogUtil.tmpDir())
+    logBuffer = LogBuffer.newBuilder()
+            .hourly()
+            .basePath(basePath)
             .addSerializer(new JacksonSerializer())
             .build();
   }
@@ -57,19 +63,19 @@ public class JacksonLogBufferTest {
   @Test
   public void test_write_read_one_type() throws IOException {
     // one log
-    logBuffer.write(a1);
-    List<A> select = logBuffer.select(A.class, 0).get();
+    LogRaw first = logBuffer.write(a1);
+    List<A> select = logBuffer.select(A.class, first.getIndex()).get();
     assertThat(select.get(0), is(a1));
 
     // write another
     logBuffer.write(a2);
-    select = logBuffer.select(A.class, 0).get();
+    select = logBuffer.select(A.class, first.getIndex()).get();
     assertThat(select.size(), is(2));
     assertThat(select.get(0), is(a1));
     assertThat(select.get(1), is(a2));
 
     // forward index past first log
-    select = logBuffer.select(A.class, 1).get();
+    select = logBuffer.select(A.class, first.getIndex() + 1).get();
     assertThat(select.size(), is(1));
     assertThat(select.get(0), is(a2));
   }
@@ -78,33 +84,33 @@ public class JacksonLogBufferTest {
   @Test
   public void test_write_read_type_isolation() throws IOException {
     // A log
-    logBuffer.write(a1);
-    List<A> selectA = logBuffer.select(A.class, 0).get();
+    LogRaw first = logBuffer.write(a1);
+    List<A> selectA = logBuffer.select(A.class, first.getIndex()).get();
     assertThat(selectA.size(), is(1));
     assertThat(selectA.get(0), is(a1));
 
     // B log
     logBuffer.write(b1);
-    List<B> selectB = logBuffer.select(B.class, 0).get();
+    List<B> selectB = logBuffer.select(B.class, first.getIndex()).get();
     assertThat(selectB.size(), is(1));
     assertThat(selectB.get(0), is(b1));
 
     // second A log - check that B is not in the set
     logBuffer.write(a2);
-    selectA = logBuffer.select(A.class, 0).get();
+    selectA = logBuffer.select(A.class, first.getIndex()).get();
     assertThat(selectA.size(), is(2));
     assertThat(selectA.get(0), is(a1));
     assertThat(selectA.get(1), is(a2));
 
     // second B log - check that A is not in the set
     logBuffer.write(b2);
-    selectB = logBuffer.select(B.class, 0).get();
+    selectB = logBuffer.select(B.class, first.getIndex()).get();
     assertThat(selectB.size(), is(2));
     assertThat(selectB.get(0), is(b1));
     assertThat(selectB.get(1), is(b2));
 
     // select all raw logs
-    List<LogRaw> select = logBuffer.select(0);
+    List<LogRaw> select = logBuffer.select(first.getIndex());
     assertThat(select.size(), is(4));
   }
 
@@ -131,7 +137,7 @@ public class JacksonLogBufferTest {
     assertThat(a.size(), is(0));
     assertThat(b.size(), is(0));
 
-    a = logBuffer.selectBackward(A.class, Long.MAX_VALUE - 100000, Long.MAX_VALUE).get();
+    a = logBuffer.selectBackward(A.class, Long.MAX_VALUE, Long.MAX_VALUE - 100000).get();
 
     // select a1 exactly
     a = logBuffer.selectBackward(A.class, al1.getTimestamp(), al1.getTimestamp()).get();
@@ -144,17 +150,17 @@ public class JacksonLogBufferTest {
     assertThat(a.get(0), is(a2));
 
     // A selecting (a1) b1 a2 b2
-    a = logBuffer.selectBackward(A.class, t1, t3).get();
+    a = logBuffer.selectBackward(A.class, t3, t1).get();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
     // A selecting (a1 b1) a2 b2
-    a = logBuffer.selectBackward(A.class, t1, t3).get();
+    a = logBuffer.selectBackward(A.class, t3, t1).get();
     assertThat(a.size(), is(1));
     assertThat(a.get(0), is(a1));
 
     // A selecting (a1 b1 a2 b2)
-    a = logBuffer.selectBackward(A.class, t1, t5).get();
+    a = logBuffer.selectBackward(A.class, t5, t1).get();
     assertThat(a.size(), is(2));
     assertThat(a.get(0), is(a1));
     assertThat(a.get(1), is(a2));
@@ -170,17 +176,17 @@ public class JacksonLogBufferTest {
     assertThat(b.get(0), is(b2));
 
     // B selecting a1 (b1) a2 b2
-    b = logBuffer.selectBackward(B.class, t2, t3).get();
+    b = logBuffer.selectBackward(B.class, t3, t2).get();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
     // B selecting a1 (b1 a2) b2
-    b = logBuffer.selectBackward(B.class, t2, t4).get();
+    b = logBuffer.selectBackward(B.class, t4, t2).get();
     assertThat(b.size(), is(1));
     assertThat(b.get(0), is(b1));
 
     // B selecting (a1 b1 a2 b2)
-    b = logBuffer.selectBackward(B.class, t1, t5).get();
+    b = logBuffer.selectBackward(B.class, t5, t1).get();
     assertThat(b.size(), is(2));
     assertThat(b.get(0), is(b1));
     assertThat(b.get(1), is(b2));
@@ -192,7 +198,7 @@ public class JacksonLogBufferTest {
     TailSchedule scheduleA = TailSchedule.builder(tailA).build();
     TailSchedule scheduleB = TailSchedule.builder(tailB).build();
     // one log
-    logBuffer.write(a1);
+    LogRaw first = logBuffer.write(a1);
     logBuffer.forward(scheduleA);
     assertThat(tailA.logs.size(), is(1));
     assertThat(tailA.logs.get(0), is(a1));
@@ -230,7 +236,7 @@ public class JacksonLogBufferTest {
     assertThat(tailB.logs.get(1), is(b1));
     assertThat(tailB.logs.get(2), is(b2));
 
-    assertThat(logBuffer.select(0).size(), is(6));
+    assertThat(logBuffer.select(first.getIndex()).size(), is(6));
   }
 
 
@@ -242,7 +248,7 @@ public class JacksonLogBufferTest {
     logBuffer.forwardWithFixedDelay(scheduleB);
 
     // one A log
-    logBuffer.write(a1);
+    LogRaw first = logBuffer.write(a1);
     Thread.sleep(600);
     assertThat(tailA.logs.size(), is(1));
     assertThat(tailA.logs.get(0), is(a1));
@@ -256,7 +262,7 @@ public class JacksonLogBufferTest {
     assertThat(tailB.logs.size(), is(1));
     assertThat(tailB.logs.get(0), is(b1));
 
-    assertThat(logBuffer.select(0).size(), is(2));
+    assertThat(logBuffer.select(first.getIndex()).size(), is(2));
   }
 
   @Test
@@ -300,7 +306,7 @@ public class JacksonLogBufferTest {
   @Test
   public void write_raw_logs_to_object_serializer() throws IOException {
     logBuffer.write(new byte[] {1});
-    Logs<A> logs = logBuffer.selectBackward(A.class, 0, System.currentTimeMillis());
+    Logs<A> logs = logBuffer.selectBackward(A.class, System.currentTimeMillis(), 0);
     assertThat(logs.size(), is(0));
   }
 

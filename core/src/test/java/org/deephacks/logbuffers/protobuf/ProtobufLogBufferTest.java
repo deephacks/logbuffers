@@ -1,12 +1,7 @@
 package org.deephacks.logbuffers.protobuf;
 
 
-import org.deephacks.logbuffers.LogBuffer;
-import org.deephacks.logbuffers.LogBuffer.Builder;
-import org.deephacks.logbuffers.LogUtil;
-import org.deephacks.logbuffers.Logs;
-import org.deephacks.logbuffers.Tail;
-import org.deephacks.logbuffers.TailSchedule;
+import org.deephacks.logbuffers.*;
 import org.deephacks.logbuffers.protobuf.ProtoLog.PageView;
 import org.deephacks.logbuffers.protobuf.ProtoLog.Visit;
 import org.junit.After;
@@ -32,11 +27,16 @@ public class ProtobufLogBufferTest {
   Visit v1 = Visit.newBuilder().setUrl("www.apache.org").setValue(1).build();
   Visit v2 = Visit.newBuilder().setUrl("www.google.com").setValue(2).build();
 
-
+  String path;
   @Before
   public void before() throws IOException {
-    logBuffer = new Builder()
-            .basePath(LogUtil.tmpDir())
+    if (logBuffer != null) {
+      logBuffer.close();
+    }
+    this.path = LogUtil.cleanupTmpDir();
+    logBuffer = LogBuffer.newBuilder()
+            .secondly()
+            .basePath(path)
             .addSerializer(new ProtobufSerializer())
             .build();
     pageViewTail = new PageViewTail();
@@ -51,9 +51,9 @@ public class ProtobufLogBufferTest {
   @Test
   public void test_write_read_different_types() throws IOException {
     // one type log
-    logBuffer.write(p1);
+    LogRaw first = logBuffer.write(p1);
     logBuffer.write(p2);
-    List<PageView> pageViews = logBuffer.select(PageView.class, 0).get();
+    List<PageView> pageViews = logBuffer.select(PageView.class, first.getIndex()).get();
 
     assertThat(pageViews.get(0).getUrl(), is(p1.getUrl()));
     assertThat(pageViews.get(0).getValue(), is(p1.getValue()));
@@ -63,7 +63,7 @@ public class ProtobufLogBufferTest {
     // another type log
     logBuffer.write(v1);
     logBuffer.write(v2);
-    List<Visit> visits = logBuffer.select(Visit.class, 0).get();
+    List<Visit> visits = logBuffer.select(Visit.class, first.getIndex()).get();
 
     assertThat(visits.get(0).getUrl(), is(v1.getUrl()));
     assertThat(visits.get(0).getValue(), is(v1.getValue()));

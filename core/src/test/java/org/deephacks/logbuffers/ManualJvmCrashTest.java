@@ -16,7 +16,7 @@ public class ManualJvmCrashTest {
 
   public static void main(String[] args) throws Exception {
     new File(DIR).mkdirs();
-    LogBuffer buffer = new Builder().basePath(DIR).build();
+    LogBuffer buffer = LogBuffer.newBuilder().basePath(DIR).build();
     RawLogTail tail = new RawLogTail();
     new Writer(buffer).start();
     Thread.sleep(500);

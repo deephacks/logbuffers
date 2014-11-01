@@ -68,19 +68,15 @@ class LogBufferTail<T> {
    * @throws IOException
    */
   TailForwardResult forward() throws IOException {
-    /**
-     * Fix paging mechanism to handle when read and write indexes are too far apart!
-     */
-    long currentWriteIndex = logBuffer.getWriteIndex();
     long currentReadIndex = getReadIndex();
     Optional<LogRaw> currentLog = logBuffer.getNext(type, currentReadIndex);
     if (!currentLog.isPresent()) {
       return new TailForwardResult();
     }
-    Logs<T> logs = logBuffer.select(type, currentReadIndex, currentWriteIndex);
+    Logs<T> logs = logBuffer.select(type, currentReadIndex);
     tail.process(logs);
     // only write the read index if tail was successful
-    writeReadIndex(currentWriteIndex);
+    writeReadIndex(logs.getLastLog().getIndex() + 1);
     return new TailForwardResult();
   }
 
@@ -162,6 +158,7 @@ class LogBufferTail<T> {
         }
       } catch (Throwable e) {
         // ignore for now
+        e.printStackTrace();
       }
     }
   }

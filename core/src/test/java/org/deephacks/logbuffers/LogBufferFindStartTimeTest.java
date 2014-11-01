@@ -2,7 +2,6 @@ package org.deephacks.logbuffers;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
-import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -15,15 +14,23 @@ import java.util.concurrent.TimeUnit;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
+@Ignore
 public class LogBufferFindStartTimeTest {
   public static List<LogRaw> logs;
   private StartTimeTail startTimeTail;
   private LogBuffer buffer;
+  String path;
 
   @Before
   public void setup() throws IOException {
+    if (buffer != null) {
+      buffer.close();
+    }
+    this.path = LogUtil.cleanupTmpDir();
     startTimeTail = new StartTimeTail();
-    buffer = new LogBufferStub(new Builder().basePath(LogUtil.tmpDir()));
+    buffer = new LogBufferStub(LogBuffer.newBuilder()
+      .hourly()
+      .basePath(path));
     // logs must have unique index, but some may have same timestamp
     logs = new ArrayList<>();
     logs.add(new LogRaw(1L, new byte[0], 1, 0));
@@ -91,7 +98,7 @@ public class LogBufferFindStartTimeTest {
 
   @Test
   public void test_real_data() throws Exception {
-    buffer = new Builder().basePath(LogUtil.tmpDir()).build();
+    buffer = LogBuffer.newBuilder().basePath(path).build();
     byte[] c1 = LogUtil.randomLog();
     byte[] c2 = LogUtil.randomLog();
     byte[] c3 = LogUtil.randomLog();
@@ -166,7 +173,7 @@ public class LogBufferFindStartTimeTest {
 
   @Ignore
   public void perf_test() throws Exception {
-    LogBuffer buffer = new Builder().basePath(LogUtil.tmpDir()).build();
+    LogBuffer buffer = LogBuffer.newBuilder().basePath(path).build();
     Stopwatch stopwatch = new Stopwatch().start();
     long oneMillionIndex = 1000000;
     long oneMillionTimestamp = 0;

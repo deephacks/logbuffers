@@ -27,11 +27,16 @@ public class AvroLogBufferTest {
   Visit v1 = Visit.newBuilder().setUrl("www.apache.org").setValue(1).build();
   Visit v2 = Visit.newBuilder().setUrl("www.google.com").setValue(2).build();
 
-
+  String basePath;
   @Before
   public void before() throws IOException {
-    logBuffer = new Builder()
-            .basePath(LogUtil.tmpDir())
+    if (logBuffer != null) {
+      logBuffer.close();
+    }
+    this.basePath = LogUtil.cleanupTmpDir();
+    logBuffer = LogBuffer.newBuilder()
+            .hourly()
+            .basePath(basePath)
             .addSerializer(new AvroSerializer())
             .build();
     pageViewTail = new PageViewTail();
@@ -46,9 +51,9 @@ public class AvroLogBufferTest {
   @Test
   public void test_write_read_different_types() throws IOException {
     // one type log
-    logBuffer.write(p1);
+    LogRaw first = logBuffer.write(p1);
     logBuffer.write(p2);
-    List<PageView> pageViews = logBuffer.select(PageView.class, 0).get();
+    List<PageView> pageViews = logBuffer.select(PageView.class, first.getIndex()).get();
 
     assertThat(pageViews.get(0).getUrl(), is(p1.getUrl()));
     assertThat(pageViews.get(0).getValue(), is(p1.getValue()));
@@ -56,9 +61,10 @@ public class AvroLogBufferTest {
     assertThat(pageViews.get(1).getValue(), is(p2.getValue()));
 
     // another type log
-    logBuffer.write(v1);
+    first = logBuffer.write(v1);
+
     logBuffer.write(v2);
-    List<Visit> visits = logBuffer.select(Visit.class, 0).get();
+    List<Visit> visits = logBuffer.select(Visit.class, first.getIndex()).get();
 
     assertThat(visits.get(0).getUrl(), is(v1.getUrl()));
     assertThat(visits.get(0).getValue(), is(v1.getValue()));

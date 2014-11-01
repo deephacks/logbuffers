@@ -9,6 +9,7 @@ import org.deephacks.logbuffers.json.JacksonSerializer.PageViews.Count;
 import org.deephacks.logbuffers.json.JacksonSerializer.TailA;
 import org.deephacks.logbuffers.protobuf.ProtoLog.PageView;
 import org.deephacks.logbuffers.protobuf.ProtobufSerializer;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -37,15 +38,15 @@ public class LogBufferTailChunkTest {
    * In the event where the backlog grows too fast, the tail will notice and process log chunks
    * faster in order to catch up as quickly as possible.
    */
-  @Test
+  @Ignore
   public void slow_batch_reader() throws Exception {
     final int roundMs = 300;
     final long writeTimeMs = TimeUnit.SECONDS.toMillis(3);
     // test json and protobuf logs in same buffer
-    final LogBuffer buffer = new Builder().basePath(basePath)
+    final LogBuffer buffer = LogBuffer.newBuilder().basePath(basePath)
             .addSerializer(new JacksonSerializer())
             .addSerializer(new ProtobufSerializer()).build();
-    final LogBuffer aggregate = new Builder().basePath(aggregatePath).addSerializer(new JacksonSerializer()).build();
+    final LogBuffer aggregate = LogBuffer.newBuilder().basePath(aggregatePath).addSerializer(new JacksonSerializer()).build();
     for (int i = 1; i < 3; i++) {
       long first = System.currentTimeMillis();
       final CountDownLatch latch = new CountDownLatch(1);

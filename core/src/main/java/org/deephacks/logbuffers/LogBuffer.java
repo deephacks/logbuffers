@@ -16,9 +16,7 @@ package org.deephacks.logbuffers;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import net.openhft.chronicle.ChronicleConfig;
-import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.ExcerptTailer;
-import net.openhft.chronicle.IndexedChronicle;
 import org.deephacks.logbuffers.TailSchedule.TailScheduleChunk;
 
 import java.io.IOException;
@@ -49,38 +47,53 @@ public class LogBuffer {
 
   private final Logger logger;
 
-  /** system tmp dir */
+  /**
+   * system tmp dir
+   */
   private static final String TMP_DIR = System.getProperty("java.io.tmpdir");
 
-  /** default path used by log files if not specified */
+  /**
+   * default path used by log files if not specified
+   */
   private static final String DEFAULT_BASE_PATH = TMP_DIR + "/logbuffer";
 
-  /** optional executor used only by scheduled tailing */
+  /**
+   * optional executor used only by scheduled tailing
+   */
   private ScheduledExecutorService cachedExecutor;
 
-  /** this should be rolling, but there are bugs. Change later to VanillaChronicle in later versions */
-  private IndexedChronicle rollingChronicle;
+  /**
+   * log writer
+   */
+  private final AppenderHolder appenderHolder;
 
-  /** log writer */
-  private final ExcerptAppender excerptAppender;
+  /**
+   * log reader
+   */
+  private final TailerHolder tailerHolder;
 
-  /** log reader */
-  private final ExcerptTailer excerptTailer;
-
-  /** path where log buffer files are stored */
+  /**
+   * path where log buffer files are stored
+   */
   private String basePath;
 
   private ConcurrentHashMap<Class<?>, LogBufferTail<?>> tails = new ConcurrentHashMap<>();
 
   private LogSerializers serializers;
+  private long lastTailerIndex;
+  private Object firstIndex;
 
   protected LogBuffer(Builder builder) throws IOException {
+    Preconditions.checkNotNull(builder.ranges, "choose a range");
     this.basePath = builder.basePath.or(DEFAULT_BASE_PATH);
     this.logger = Logger.getLogger(LogBuffer.class.getName() + "." + checkNotNull(basePath + "/writer"));
-    this.rollingChronicle = new IndexedChronicle(basePath + "/data", builder.config);
-    this.excerptAppender = rollingChronicle.createAppender();
-    this.excerptTailer = rollingChronicle.createTailer();
+    this.appenderHolder = new AppenderHolder(basePath + "/data", builder.ranges);
+    this.tailerHolder = new TailerHolder(basePath + "/data", builder.ranges);
     this.serializers = builder.serializers;
+  }
+
+  public static Builder newBuilder() {
+    return new Builder();
   }
 
   synchronized ScheduledExecutorService getCachedExecutor() {
@@ -122,9 +135,9 @@ public class LogBuffer {
     // single writer is required in order append to file since there is
     // only one file written to at a given time. Also for generating unique
     // sequential indexes and sequential timestamps.
-    synchronized (excerptAppender) {
+    synchronized (appenderHolder) {
       LogRaw log = new LogRaw(type, content);
-      long index = log.write(excerptAppender);
+      long index = log.write(appenderHolder);
       return new LogRaw(log, index);
     }
   }
@@ -138,13 +151,13 @@ public class LogBuffer {
    * @throws IOException
    */
   public List<LogRaw> select(long fromIndex) throws IOException {
-    long writeIdx = getWriteIndex();
-    return select(fromIndex, writeIdx);
+    long lastIndex = tailerHolder.getCurrentStopIndex();
+    return select(fromIndex, lastIndex);
   }
 
   Optional<LogRaw> get(long index) throws IOException {
-    synchronized (excerptTailer) {
-      return LogRaw.read(excerptTailer, index);
+    synchronized (tailerHolder) {
+      return LogRaw.read(tailerHolder, index);
     }
   }
 
@@ -152,40 +165,38 @@ public class LogBuffer {
    * Get the next forward index of specified type.
    */
   public <T> Optional<LogRaw> getNext(Class<T> cls, long index) throws IOException {
-    synchronized (excerptTailer) {
-      long writeIndex = getWriteIndex();
-      while (index < writeIndex) {
-        Optional<Long> optional = peekType(index++);
-        if (!optional.isPresent()) {
-          continue;
-        }
-        long type = optional.get();
-        if (type != LogRaw.DEFAULT_TYPE) {
-          LogSerializer serializer = serializers.getSerializer(type);
-          Class<?> found = serializer.getMapping().get(type);
-          if (cls.isAssignableFrom(found)) {
-            return get(index - 1);
-          }
+    synchronized (tailerHolder) {
+      Optional<Long> optional = peekType(index);
+      if (!optional.isPresent()) {
+        return Optional.absent();
+      }
+      long type = optional.get();
+      if (type != LogRaw.DEFAULT_TYPE) {
+        LogSerializer serializer = serializers.getSerializer(type);
+        Class<?> found = serializer.getMapping().get(type);
+        if (cls.isAssignableFrom(found)) {
+          return get(index);
         } else {
-          return get(index - 1);
+          return getNext(cls, ++index);
         }
+      } else {
+        return get(index);
       }
     }
-    return Optional.absent();
   }
 
   /**
    * Only reads the timestamp in order to avoid serialization overhead.
    */
   Optional<Long> peekTimestamp(long index) throws IOException {
-    synchronized (excerptTailer) {
-      return LogRaw.peekTimestamp(excerptTailer, index);
+    synchronized (tailerHolder) {
+      return LogRaw.peekTimestamp(tailerHolder, index);
     }
   }
 
   Optional<Long> peekType(long index) throws IOException {
-    synchronized (excerptTailer) {
-      return LogRaw.peekType(excerptTailer, index);
+    synchronized (tailerHolder) {
+      return LogRaw.peekType(tailerHolder, index);
     }
   }
 
@@ -199,7 +210,7 @@ public class LogBuffer {
 
   /**
    * Return the index closest to provided time.
-   *
+   * <p/>
    * This is a very fast scan operation. Should find the index in less than
    * a millisecond in a buffer with over 30 million logs.
    *
@@ -209,8 +220,8 @@ public class LogBuffer {
    */
   public Long findStartTimeIndex(long startTime) throws IOException {
     long writeIndex = getWriteIndex();
-    synchronized (excerptTailer) {
-      long index = binarySearchStartTime(writeIndex, startTime);
+    synchronized (tailerHolder) {
+      long index = tailerHolder.binarySearchAfterTime(startTime).get().getIndex();
       while (index > 0 && index < (writeIndex - 1)) {
         // pick the lowest index for logs that have exact same timestamp
         if (startTime <= get(index - 1).get().getTimestamp()) {
@@ -228,28 +239,6 @@ public class LogBuffer {
   }
 
   /**
-   * Search the closest index to start time using binary search.
-   */
-  private Long binarySearchStartTime(long writeIndex, long startTime) throws IOException {
-    long low = 0;
-    long high = writeIndex;
-    synchronized (excerptTailer) {
-      while (low < high) {
-        long mid = (low + high) >>> 1;
-        long timestamp = peekTimestamp(mid).get();
-        if (timestamp < startTime)
-          low = mid + 1;
-        else if (timestamp > startTime)
-          high = mid - 1;
-        else {
-          return mid;
-        }
-      }
-      return low >= writeIndex ? writeIndex - 1 : low;
-    }
-  }
-
-  /**
    * Select a list of log objects from a specific writeIndex up until a
    * provided writeIndex.
    *
@@ -261,7 +250,7 @@ public class LogBuffer {
   public List<LogRaw> select(long fromIndex, long toIndex) throws IOException {
     Preconditions.checkArgument(fromIndex <= toIndex, "from must be less than to");
     List<LogRaw> messages = new ArrayList<>();
-    synchronized (excerptTailer) {
+    synchronized (tailerHolder) {
       long read = fromIndex;
       while (read < toIndex) {
         Optional<LogRaw> optional = get(read++);
@@ -284,7 +273,31 @@ public class LogBuffer {
    * @throws IOException
    */
   public List<LogRaw> selectBackward(long fromTimeMs, long toTimeMs) throws IOException {
-    return selectBackward(getWriteIndex() - 1, fromTimeMs, toTimeMs);
+    Preconditions.checkArgument(fromTimeMs >= toTimeMs, "to must be less than from");
+    LinkedList<LogRaw> messages = new LinkedList<>();
+    Optional<LogRaw> fromLog = tailerHolder.binarySearchBeforeTime(fromTimeMs);
+    if (!fromLog.isPresent()) {
+      return new ArrayList<>();
+    }
+    long startIndex = fromLog.get().getIndex();
+    synchronized (tailerHolder) {
+      for (long i = startIndex; i > 0; i--) {
+        Optional<Long> optional = peekTimestamp(i);
+        if (!optional.isPresent()) {
+          return messages;
+        }
+        long timestamp = optional.get();
+        if (timestamp <= fromTimeMs && timestamp >= toTimeMs) {
+          messages.addFirst(get(i).get());
+        }
+        if (timestamp <= toTimeMs) {
+          // moved past fromTime and since all timestamps are sequential
+          // there is no more data to find at this point.
+          break;
+        }
+      }
+      return messages;
+    }
   }
 
   /**
@@ -303,40 +316,6 @@ public class LogBuffer {
   /**
    * Select a list of logs based on the given period of time with respect
    * to the timestamp of each log, start scanning at from index, going
-   * backwards in time.
-   *
-   * @param fromTimeMs from (inclusive)
-   * @param toTimeMs   to (inclusive)
-   * @param fromIndex  from what index to start scanning
-   * @return list of matching logs
-   * @throws IOException
-   */
-  public List<LogRaw> selectBackward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
-    Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
-    LinkedList<LogRaw> messages = new LinkedList<>();
-    synchronized (excerptTailer) {
-      for (long i = fromIndex; i > -1; i--) {
-        Optional<Long> optional = peekTimestamp(i);
-        if (!optional.isPresent()) {
-          continue;
-        }
-        long timestamp = optional.get();
-        if (timestamp >= fromTimeMs && timestamp <= toTimeMs) {
-          messages.addFirst(get(i).get());
-        }
-        if (timestamp < fromTimeMs) {
-          // moved past fromTime and since all timestamps are sequential
-          // there is no more data to find at this point.
-          break;
-        }
-      }
-      return messages;
-    }
-  }
-
-  /**
-   * Select a list of logs based on the given period of time with respect
-   * to the timestamp of each log, start scanning at from index, going
    * forwards in time.
    *
    * @param fromTimeMs from (inclusive)
@@ -349,7 +328,7 @@ public class LogBuffer {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     LinkedList<LogRaw> messages = new LinkedList<>();
     long writeIndex = getWriteIndex();
-    synchronized (excerptTailer) {
+    synchronized (tailerHolder) {
       for (long i = fromIndex; i < writeIndex; i++) {
         Optional<Long> optional = peekTimestamp(i);
         if (!optional.isPresent()) {
@@ -378,7 +357,7 @@ public class LogBuffer {
    * @throws IOException
    */
   public <T> Logs<T> select(Class<T> type, long fromIndex) throws IOException {
-    return select(type, fromIndex, getWriteIndex());
+    return select(type, fromIndex, tailerHolder.getCurrentStopIndex());
   }
 
   /**
@@ -399,8 +378,6 @@ public class LogBuffer {
    * Selects a specific type of logs only, all other types are filtered out, based on the
    * given period of time with respect to the timestamp of each log.
    * <p/>
-   *
-   * {@link #selectBackward(long, long, long)}
    */
   public <T> Logs<T> selectBackward(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
     final List<LogRaw> logs = selectBackward(fromTimeMs, toTimeMs);
@@ -411,7 +388,7 @@ public class LogBuffer {
    * Selects a specific type of logs only, all other types are filtered out, based on the
    * given period of time with respect to the timestamp of each log.
    * <p/>
-   *
+   * <p/>
    * {@link #selectForward(Class, long, long, long)}
    */
   public <T> Logs<T> selectForward(Class<T> type, long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
@@ -448,6 +425,7 @@ public class LogBuffer {
    * @return result of forward operation.
    * @throws IOException
    */
+
   public <T> TailForwardResult forward(TailSchedule schedule) throws IOException {
     LogBufferTail<T> tailBuffer = putIfAbsent(schedule);
     return tailBuffer.forward();
@@ -456,7 +434,7 @@ public class LogBuffer {
   /**
    * Reset the read time for the tail schedule.
    *
-   * @param schedule the schedule to modify
+   * @param schedule  the schedule to modify
    * @param startTime start time of the read
    * @return current read index
    * @throws IOException
@@ -480,8 +458,8 @@ public class LogBuffer {
    * @throws IOException
    */
   public synchronized void close() throws IOException {
-    synchronized (excerptAppender) {
-      excerptAppender.close();
+    synchronized (appenderHolder) {
+      appenderHolder.close();
       for (Class<?> cls : tails.keySet()) {
         LogBufferTail<?> logBufferTail = tails.remove(cls);
         logBufferTail.cancel(true);
@@ -490,8 +468,7 @@ public class LogBuffer {
       if (cachedExecutor != null) {
         cachedExecutor.shutdown();
       }
-      excerptTailer.close();
-      rollingChronicle.close();
+      tailerHolder.close();
     }
   }
 
@@ -500,8 +477,8 @@ public class LogBuffer {
    * @throws IOException
    */
   public long getWriteIndex() throws IOException {
-    synchronized (excerptAppender) {
-      return excerptAppender.index();
+    synchronized (appenderHolder) {
+      return appenderHolder.getAppenderIndex(System.currentTimeMillis());
     }
   }
 
@@ -556,6 +533,7 @@ public class LogBuffer {
     LogBufferTail<?> logBufferTail = tails.putIfAbsent(tail.getClass(), new LogBufferTail<>(this, schedule));
     if (logBufferTail == null) {
       logBufferTail = tails.get(tail.getClass());
+      logBufferTail.writeReadIndex(getFirstIndex());
     }
     return (LogBufferTail<T>) logBufferTail;
   }
@@ -580,12 +558,21 @@ public class LogBuffer {
     return logBufferTail.getReadIndex();
   }
 
+  public long getLastTailerIndex() {
+    return tailerHolder.getCurrentStopIndex();
+  }
+
+  public long getFirstIndex() {
+    return tailerHolder.getFirstWrittenIndex();
+  }
+
   public static class Builder {
     private ChronicleConfig config = ChronicleConfig.LARGE.clone();
     private Optional<String> basePath = Optional.absent();
     private LogSerializers serializers = new LogSerializers();
+    private DateRanges ranges;
 
-    public Builder() {
+    private Builder() {
       config.indexFileExcerpts(Short.MAX_VALUE);
     }
 
@@ -608,6 +595,39 @@ public class LogBuffer {
       config.indexFileExcerpts(logsPerFile);
       return this;
     }
+
+    /**
+     * Roll files every second.
+     */
+    public Builder secondly() {
+      this.ranges = DateRanges.secondly();
+      return this;
+    }
+
+    /**
+     * Roll files every minute.
+     */
+    public Builder minutely() {
+      this.ranges = DateRanges.minutely();
+      return this;
+    }
+
+    /**
+     * Roll files every hour.
+     */
+    public Builder hourly() {
+      this.ranges = DateRanges.hourly();
+      return this;
+    }
+
+    /**
+     * Roll files every day.
+     */
+    public Builder daily() {
+      this.ranges = DateRanges.hourly();
+      return this;
+    }
+
 
     public LogBuffer build() throws IOException {
       return new LogBuffer(this);

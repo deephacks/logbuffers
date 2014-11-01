@@ -14,7 +14,7 @@ public class IndexTest {
 
   @Before
   public void before() {
-    dir = LogUtil.tmpDir();
+    dir = LogUtil.cleanupTmpDir();
     new File(dir).mkdirs();
     dir += "test";
   }
@@ -23,7 +23,6 @@ public class IndexTest {
   public void write_read_close_read() throws IOException {
 
     Index index = new Index(dir);
-    assertThat(index.getIndex(), is(0L));
 
     index.writeIndex(5);
     assertThat(index.getIndex(), is(5L));

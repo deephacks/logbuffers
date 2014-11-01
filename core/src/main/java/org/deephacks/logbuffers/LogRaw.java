@@ -92,10 +92,12 @@ public final class LogRaw {
     return 8 + 8 + 4 + content.length;
   }
 
-  long write(ExcerptAppender appender) {
-    long index = appender.index();
+  long write(AppenderHolder holder) {
+    long time = getTimestamp();
+    long index = holder.getAppenderIndex(time);
+    ExcerptAppender appender = holder.getAppender(time);
     appender.startExcerpt(getLength());
-    appender.writeLong(getTimestamp());
+    appender.writeLong(time);
     appender.writeLong(type);
     appender.writeInt(content.length);
     appender.write(content);
@@ -103,9 +105,17 @@ public final class LogRaw {
     return index;
   }
 
-  static Optional<LogRaw> read(ExcerptTailer tailer, long index) {
+  static Optional<LogRaw> read(TailerHolder holder, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
-    tailer.index(index);
+    Optional<ExcerptTailer> optional = holder.getTailerForIndex(index);
+    if (!optional.isPresent()) {
+      return Optional.absent();
+    }
+    ExcerptTailer tailer = optional.get();
+    long holderIndex = holder.getHolderIndex(index);
+    if (!tailer.index(holderIndex)) {
+      return Optional.absent();
+    }
     long timestamp = tailer.readLong();
     long type = tailer.readLong();
     int messageSize = tailer.readInt();
@@ -117,19 +127,30 @@ public final class LogRaw {
     return Optional.fromNullable(new LogRaw(type, message, timestamp, index));
   }
 
-  static Optional<Long> peekTimestamp(ExcerptTailer tailer, long index) {
+  static Optional<Long> peekTimestamp(TailerHolder holder, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
-    tailer.index(index);
-    long timestamp = tailer.readLong();
-    if (timestamp == 0) {
+    Optional<ExcerptTailer> optional = holder.getTailerForIndex(index);
+    if (!optional.isPresent()) {
       return Optional.absent();
     }
+    ExcerptTailer tailer = optional.get();
+    if (!tailer.index(holder.getHolderIndex(index))) {
+      return Optional.absent();
+    }
+    long timestamp = tailer.readLong();
     return Optional.fromNullable(timestamp);
   }
 
-  public static Optional<Long> peekType(ExcerptTailer tailer, long index) {
+  public static Optional<Long> peekType(TailerHolder holder, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
-    tailer.index(index);
+    Optional<ExcerptTailer> optional = holder.getTailerForIndex(index);
+    if (!optional.isPresent()) {
+      return Optional.absent();
+    }
+    ExcerptTailer tailer = optional.get();
+    if (!tailer.index(holder.getHolderIndex(index))) {
+      return Optional.absent();
+    }
     long timestamp = tailer.readLong();
     long type = tailer.readLong();
     if (type == 0) {

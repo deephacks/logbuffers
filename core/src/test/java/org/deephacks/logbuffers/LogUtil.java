@@ -2,6 +2,7 @@ package org.deephacks.logbuffers;
 
 import com.google.common.base.Charsets;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
@@ -14,19 +15,37 @@ import java.util.UUID;
 public class LogUtil {
   public static SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss:SSS");
   public static List<byte[]> randomLogs = new ArrayList<>();
-  public static String[] URLS = new String[] {"www.google.com", "www.cloudera.com", "www.apache.org"};
+  public static String[] URLS = new String[]{"www.google.com", "www.cloudera.com", "www.apache.org"};
+  private static final File tmpDir = new File(System.getProperty("java.io.tmpdir"), "logBufferTest");
   static {
     for (int i = 0; i < 1000; i++) {
       randomLogs.add(randomLog());
     }
   }
 
-  public static String tmpDir() {
-    try {
-      return Files.createTempDirectory("logBufferTest-" + UUID.randomUUID().toString()).toString();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+  public static String cleanupTmpDir() {
+    if (tmpDir.exists()) {
+      deleteRecursive(tmpDir);
     }
+    return tmpDir.toString();
+  }
+
+  private static void deleteRecursive(File path) {
+    File[] c = path.listFiles();
+    if (c == null) {
+      return;
+    }
+    for (File file : c) {
+      if (file.isDirectory()) {
+        deleteRecursive(file);
+        file.delete();
+      } else {
+        file.delete();
+      }
+    }
+
+    path.delete();
+
   }
 
   public static byte[] randomLog() {
@@ -38,8 +57,8 @@ public class LogUtil {
   }
 
   public static void sleep(long maxRandomDelayMs) throws InterruptedException {
-      long sleep = Math.abs(new Random().nextInt() % maxRandomDelayMs);
-      Thread.sleep(sleep);
+    long sleep = Math.abs(new Random().nextInt() % maxRandomDelayMs);
+    Thread.sleep(sleep);
   }
 
   public static String formatMs(long ms) {
