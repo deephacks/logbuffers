@@ -5,7 +5,7 @@
 The purpose of logbuffers is to provide simple, reliable, low latency persistence buffers for high throughput data feeds. 
 
 Every buffer consist of an ordered, immutable sequence of logs that is continually appended to — much like a commit log.
-Every log is given a sequential index number (position/offset) that uniquely identifies each log within the buffer.
+Every log is given an increasing (but not necessarily sequential) index number (position/offset) that uniquely identifies each log within the buffer.
 
 Buffers are stored in continuously rolling files and every buffer retain every log written to it - whether or not it have been consumed - until the physical file is manually removed. 
 
