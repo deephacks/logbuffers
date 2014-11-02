@@ -64,7 +64,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
     }
 
     // start directly at index where processing ended previous round go forward in time
-    Logs<T> logs = logBuffer.selectForward(type, currentLog.get().getIndex(), fixedFrom, fixedTo);
+    Logs<T> logs = logBuffer.selectForward(type, fixedFrom, fixedTo);
 
     // don't call tail if there are no logs
     if (logs.isEmpty()) {

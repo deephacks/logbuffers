@@ -162,8 +162,8 @@ public class JacksonLogBufferTest {
     // A selecting (a1 b1 a2 b2)
     a = logBuffer.selectBackward(A.class, t5, t1).get();
     assertThat(a.size(), is(2));
-    assertThat(a.get(0), is(a1));
-    assertThat(a.get(1), is(a2));
+    assertThat(a.get(1), is(a1));
+    assertThat(a.get(0), is(a2));
 
     // select b1 exactly
     b = logBuffer.selectBackward(B.class, bl1.getTimestamp(), bl1.getTimestamp()).get();
@@ -188,8 +188,8 @@ public class JacksonLogBufferTest {
     // B selecting (a1 b1 a2 b2)
     b = logBuffer.selectBackward(B.class, t5, t1).get();
     assertThat(b.size(), is(2));
-    assertThat(b.get(0), is(b1));
-    assertThat(b.get(1), is(b2));
+    assertThat(b.get(1), is(b1));
+    assertThat(b.get(0), is(b2));
   }
 
 

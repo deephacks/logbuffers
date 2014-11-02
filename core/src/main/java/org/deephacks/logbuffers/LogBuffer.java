@@ -16,19 +16,17 @@ package org.deephacks.logbuffers;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import net.openhft.chronicle.ChronicleConfig;
-import net.openhft.chronicle.ExcerptTailer;
 import org.deephacks.logbuffers.TailSchedule.TailScheduleChunk;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.deephacks.logbuffers.TailerHolder.Tailer;
 
 /**
  * A log buffer persist data items sequentially on local disk.
@@ -151,7 +149,7 @@ public class LogBuffer {
    * @throws IOException
    */
   public List<LogRaw> select(long fromIndex) throws IOException {
-    long lastIndex = tailerHolder.getCurrentStopIndex();
+    long lastIndex = tailerHolder.getLatestStopIndex();
     return select(fromIndex, lastIndex);
   }
 
@@ -190,7 +188,8 @@ public class LogBuffer {
    */
   Optional<Long> peekTimestamp(long index) throws IOException {
     synchronized (tailerHolder) {
-      return LogRaw.peekTimestamp(tailerHolder, index);
+      List<Tailer> tailers = tailerHolder.getTailersBetweenIndex(index, index);
+      return LogRaw.peekTimestamp(tailers.get(0), index);
     }
   }
 
@@ -249,17 +248,29 @@ public class LogBuffer {
    */
   public List<LogRaw> select(long fromIndex, long toIndex) throws IOException {
     Preconditions.checkArgument(fromIndex <= toIndex, "from must be less than to");
-    List<LogRaw> messages = new ArrayList<>();
     synchronized (tailerHolder) {
-      long read = fromIndex;
-      while (read < toIndex) {
-        Optional<LogRaw> optional = get(read++);
-        if (!optional.isPresent()) {
-          break;
-        }
-        messages.add(optional.get());
+      ListIterator<Tailer> tailers = tailerHolder.getTailersBetweenIndex(fromIndex, toIndex).listIterator();
+      long currentIndex = fromIndex;
+      List<LogRaw> result = new ArrayList<>();
+      if (!tailers.hasNext()) {
+        return new ArrayList<>();
       }
-      return messages;
+      Tailer tailer = tailers.next();
+      while (true) {
+        long lastWrittenIndex = tailer.getLastWrittenIndex();
+        while (currentIndex <= lastWrittenIndex) {
+          Optional<LogRaw> optional = LogRaw.read(tailer, currentIndex++);
+          if (optional.isPresent()) {
+            result.add(optional.get());
+          }
+        }
+        if (tailers.hasNext()) {
+          tailer = tailers.next();
+          currentIndex = tailer.startIndex;
+        } else {
+          return result;
+        }
+      }
     }
   }
 
@@ -273,31 +284,10 @@ public class LogBuffer {
    * @throws IOException
    */
   public List<LogRaw> selectBackward(long fromTimeMs, long toTimeMs) throws IOException {
-    Preconditions.checkArgument(fromTimeMs >= toTimeMs, "to must be less than from");
-    LinkedList<LogRaw> messages = new LinkedList<>();
-    Optional<LogRaw> fromLog = tailerHolder.binarySearchBeforeTime(fromTimeMs);
-    if (!fromLog.isPresent()) {
-      return new ArrayList<>();
-    }
-    long startIndex = fromLog.get().getIndex();
-    synchronized (tailerHolder) {
-      for (long i = startIndex; i > 0; i--) {
-        Optional<Long> optional = peekTimestamp(i);
-        if (!optional.isPresent()) {
-          return messages;
-        }
-        long timestamp = optional.get();
-        if (timestamp <= fromTimeMs && timestamp >= toTimeMs) {
-          messages.addFirst(get(i).get());
-        }
-        if (timestamp <= toTimeMs) {
-          // moved past fromTime and since all timestamps are sequential
-          // there is no more data to find at this point.
-          break;
-        }
-      }
-      return messages;
-    }
+    // improve performance with a real implementation
+    List<LogRaw> logs = selectForward(toTimeMs, fromTimeMs);
+    Collections.reverse(logs);
+    return logs;
   }
 
   /**
@@ -310,41 +300,42 @@ public class LogBuffer {
    * @throws IOException
    */
   public List<LogRaw> selectForward(long fromTimeMs, long toTimeMs) throws IOException {
-    return selectForward(getWriteIndex() - 1, fromTimeMs, toTimeMs);
-  }
-
-  /**
-   * Select a list of logs based on the given period of time with respect
-   * to the timestamp of each log, start scanning at from index, going
-   * forwards in time.
-   *
-   * @param fromTimeMs from (inclusive)
-   * @param toTimeMs   to (inclusive)
-   * @param fromIndex  from what index to start scanning
-   * @return list of matching logs
-   * @throws IOException
-   */
-  public List<LogRaw> selectForward(long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     LinkedList<LogRaw> messages = new LinkedList<>();
-    long writeIndex = getWriteIndex();
+    ListIterator<Tailer> tailers = tailerHolder.getTailersBetweenTime(fromTimeMs, toTimeMs).listIterator();
+    if (!tailers.hasNext()) {
+      return new ArrayList<>();
+    }
+    Tailer t = tailers.next();
+    Optional<LogRaw> fromLog = t.binarySearchAfterTime(fromTimeMs);
+    if (!fromLog.isPresent()) {
+      return new ArrayList<>();
+    }
+    long startIndex = fromLog.get().getIndex();
     synchronized (tailerHolder) {
-      for (long i = fromIndex; i < writeIndex; i++) {
-        Optional<Long> optional = peekTimestamp(i);
-        if (!optional.isPresent()) {
-          continue;
+      while (true) {
+        for (long i = startIndex; i < Long.MAX_VALUE; i++) {
+          Optional<Long> optional = LogRaw.peekTimestamp(t, i);
+          if (!optional.isPresent()) {
+            break;
+          }
+          long timestamp = optional.get();
+          if (timestamp >= fromTimeMs && timestamp <= toTimeMs) {
+            messages.addLast(LogRaw.read(t, i).get());
+          }
+          if (timestamp > toTimeMs) {
+            // moved past fromTime and since all timestamps are sequential
+            // there is no more data to find at this point.
+            break;
+          }
         }
-        long timestamp = optional.get();
-        if (timestamp >= fromTimeMs && timestamp <= toTimeMs) {
-          messages.addLast(get(i).get());
-        }
-        if (timestamp > toTimeMs) {
-          // moved past fromTime and since all timestamps are sequential
-          // there is no more data to find at this point.
-          break;
+        if (tailers.hasNext()) {
+          t = tailers.next();
+          startIndex = t.startIndex;
+        } else {
+          return messages;
         }
       }
-      return messages;
     }
   }
 
@@ -357,7 +348,7 @@ public class LogBuffer {
    * @throws IOException
    */
   public <T> Logs<T> select(Class<T> type, long fromIndex) throws IOException {
-    return select(type, fromIndex, tailerHolder.getCurrentStopIndex());
+    return select(type, fromIndex, tailerHolder.getLatestStopIndex());
   }
 
   /**
@@ -388,11 +379,9 @@ public class LogBuffer {
    * Selects a specific type of logs only, all other types are filtered out, based on the
    * given period of time with respect to the timestamp of each log.
    * <p/>
-   * <p/>
-   * {@link #selectForward(Class, long, long, long)}
    */
-  public <T> Logs<T> selectForward(Class<T> type, long fromIndex, long fromTimeMs, long toTimeMs) throws IOException {
-    final List<LogRaw> logs = selectForward(fromIndex, fromTimeMs, toTimeMs);
+  public <T> Logs<T> selectForward(Class<T> type, long fromTimeMs, long toTimeMs) throws IOException {
+    final List<LogRaw> logs = selectForward(fromTimeMs, toTimeMs);
     return convert(type, logs);
   }
 
@@ -558,12 +547,8 @@ public class LogBuffer {
     return logBufferTail.getReadIndex();
   }
 
-  public long getLastTailerIndex() {
-    return tailerHolder.getCurrentStopIndex();
-  }
-
   public long getFirstIndex() {
-    return tailerHolder.getFirstWrittenIndex();
+    return tailerHolder.getFirstIndex();
   }
 
   public static class Builder {

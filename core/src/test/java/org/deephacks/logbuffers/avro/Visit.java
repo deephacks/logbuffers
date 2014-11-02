@@ -33,7 +33,7 @@ public class Visit extends org.apache.avro.specific.SpecificRecordBase implement
     switch (field$) {
     case 0: return url;
     case 1: return value;
-    default: throw new org.apache.avro.AvroRuntimeException("Bad index");
+    default: throw new org.apache.avro.AvroRuntimeException("Bad startStopIndexForTime");
     }
   }
   // Used by DatumReader.  Applications should not call. 
@@ -42,7 +42,7 @@ public class Visit extends org.apache.avro.specific.SpecificRecordBase implement
     switch (field$) {
     case 0: url = (java.lang.String)value$; break;
     case 1: value = (java.lang.Integer)value$; break;
-    default: throw new org.apache.avro.AvroRuntimeException("Bad index");
+    default: throw new org.apache.avro.AvroRuntimeException("Bad startStopIndexForTime");
     }
   }
 

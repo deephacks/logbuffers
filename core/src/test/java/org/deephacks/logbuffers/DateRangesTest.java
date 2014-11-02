@@ -38,30 +38,30 @@ public class DateRangesTest {
     long indexPerInterval = MAX_INDEX_PER_MS * unit.toMillis(1) - 1;
     // current
     long time1 = 0;
-    long[] index = range.index(time1);
+    long[] index = range.startStopIndexForTime(time1);
     long expectedToIndex = indexPerInterval;
     assertThat(index[0], is(0L));
     assertThat(index[1], is(expectedToIndex));
     assertThat(range.formatTime(time1), is(format1));
-    long t1 = range.getStartTime(index[0]);
-    long t2 = range.getStartTime(index[1]);
+    long t1 = range.startTimeForIndex(index[0]);
+    long t2 = range.startTimeForIndex(index[1]);
     assertThat(t1, is(time1));
     assertThat(t1, is(t2));
-    assertThat(range.getStartTimeFormat(index[0]), is(format1));
-    assertThat(range.getStartTimeFormat(index[1]), is(format1));
-    assertThat(range.getStartTimeFormat(index[1] + 1), is(format2));
+    assertThat(range.startTimeFormatForIndex(index[0]), is(format1));
+    assertThat(range.startTimeFormatForIndex(index[1]), is(format1));
+    assertThat(range.startTimeFormatForIndex(index[1] + 1), is(format2));
 
     // next
     long time2 = 0 + unit.toMillis(1);
-    index = range.index(time2);
+    index = range.startStopIndexForTime(time2);
     assertThat(index[0], is(expectedToIndex + 1));
     assertThat(index[1], is(index[0] + indexPerInterval));
-    t1 = range.getStartTime(index[0]);
-    t2 = range.getStartTime(index[1]);
+    t1 = range.startTimeForIndex(index[0]);
+    t2 = range.startTimeForIndex(index[1]);
     assertThat(t1, is(time2));
     assertThat(t1, is(t2));
-    assertThat(range.getStartTimeFormat(index[0]), is(format2));
-    assertThat(range.getStartTimeFormat(index[1]), is(format2));
+    assertThat(range.startTimeFormatForIndex(index[0]), is(format2));
+    assertThat(range.startTimeFormatForIndex(index[1]), is(format2));
   }
 
 }

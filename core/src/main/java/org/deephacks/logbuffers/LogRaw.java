@@ -20,6 +20,8 @@ import net.openhft.chronicle.ExcerptTailer;
 
 import java.util.Arrays;
 
+import static org.deephacks.logbuffers.TailerHolder.Tailer;
+
 /**
  * A raw log.
  */
@@ -105,14 +107,30 @@ public final class LogRaw {
     return index;
   }
 
+  static Optional<LogRaw> read(Tailer tailer, long index) {
+    long holderIndex = tailer.getHolderIndex(index);
+    if (!tailer.tailer.index(holderIndex)) {
+      return Optional.absent();
+    }
+    long timestamp = tailer.tailer.readLong();
+    long type = tailer.tailer.readLong();
+    int messageSize = tailer.tailer.readInt();
+    byte[] message = new byte[messageSize];
+    tailer.tailer.read(message);
+    if (type == 0) {
+      return Optional.absent();
+    }
+    return Optional.fromNullable(new LogRaw(type, message, timestamp, index));
+  }
+
   static Optional<LogRaw> read(TailerHolder holder, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
-    Optional<ExcerptTailer> optional = holder.getTailerForIndex(index);
+    Optional<ExcerptTailer> optional = holder.getExcerptTailerForIndex(index);
     if (!optional.isPresent()) {
       return Optional.absent();
     }
     ExcerptTailer tailer = optional.get();
-    long holderIndex = holder.getHolderIndex(index);
+    long holderIndex = holder.convertToLocalIndex(index);
     if (!tailer.index(holderIndex)) {
       return Optional.absent();
     }
@@ -127,14 +145,10 @@ public final class LogRaw {
     return Optional.fromNullable(new LogRaw(type, message, timestamp, index));
   }
 
-  static Optional<Long> peekTimestamp(TailerHolder holder, long index) {
+  static Optional<Long> peekTimestamp(Tailer t, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
-    Optional<ExcerptTailer> optional = holder.getTailerForIndex(index);
-    if (!optional.isPresent()) {
-      return Optional.absent();
-    }
-    ExcerptTailer tailer = optional.get();
-    if (!tailer.index(holder.getHolderIndex(index))) {
+    ExcerptTailer tailer = t.tailer;
+    if (!tailer.index(t.getHolderIndex(index))) {
       return Optional.absent();
     }
     long timestamp = tailer.readLong();
@@ -143,12 +157,12 @@ public final class LogRaw {
 
   public static Optional<Long> peekType(TailerHolder holder, long index) {
     Preconditions.checkArgument(index >= 0, "index must be positive");
-    Optional<ExcerptTailer> optional = holder.getTailerForIndex(index);
+    Optional<ExcerptTailer> optional = holder.getExcerptTailerForIndex(index);
     if (!optional.isPresent()) {
       return Optional.absent();
     }
     ExcerptTailer tailer = optional.get();
-    if (!tailer.index(holder.getHolderIndex(index))) {
+    if (!tailer.index(holder.convertToLocalIndex(index))) {
       return Optional.absent();
     }
     long timestamp = tailer.readLong();

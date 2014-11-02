@@ -109,8 +109,8 @@ public class LogBufferTest {
 
     select = logBuffer.selectBackward(t4, t2);
     assertThat(select.size(), is(2));
-    assertArrayEquals(select.get(0).getContent(), log2.getContent());
-    assertArrayEquals(select.get(1).getContent(), log3.getContent());
+    assertArrayEquals(select.get(1).getContent(), log2.getContent());
+    assertArrayEquals(select.get(0).getContent(), log3.getContent());
   }
 
   @Test

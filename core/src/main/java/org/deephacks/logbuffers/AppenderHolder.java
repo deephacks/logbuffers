@@ -12,14 +12,15 @@ class AppenderHolder {
   private IndexedChronicle chronicle;
   public ExcerptAppender appender;
   private long stopIndex = -1;
-  private long appenderIndex;
 
   AppenderHolder(String path, DateRanges ranges) {
+    long now = System.currentTimeMillis();
     this.ranges = ranges;
     this.basePath = path;
     new File(this.basePath).mkdirs();
-    long startIndex = ranges.startIndex(System.currentTimeMillis());
-    String intervalDir = ranges.getStartTimeFormat(startIndex);
+    this.stopIndex = ranges.stopIndexForTime(now);
+    long startIndex = ranges.startIndexForTime(now);
+    String intervalDir = ranges.startTimeFormatForIndex(startIndex);
     File basePathDir = new File(basePath, intervalDir);
     basePathDir.mkdirs();
     try {
@@ -32,12 +33,12 @@ class AppenderHolder {
 
   ExcerptAppender getAppender(long time){
     try {
-      long startIndex = ranges.startIndex(time);
-      long startTime = ranges.getStartTime(startIndex + appender.index());
-      if (startTime > time) {
+      long startIndex = ranges.startIndexForTime(time);
+      if (this.stopIndex < startIndex) {
+        this.appender.close();
         this.chronicle.close();
-        this.chronicle.close();
-        String intervalDir = ranges.getStartTimeFormat(startIndex);
+        this.stopIndex = ranges.nextStartIndexForIndex(startIndex) - 1;
+        String intervalDir = ranges.startTimeFormatForIndex(startIndex);
         File basePathDir = new File(basePath, intervalDir);
         this.chronicle = new IndexedChronicle(basePathDir.getAbsolutePath() + "/" + intervalDir);
         this.appender = chronicle.createAppender();
@@ -57,7 +58,7 @@ class AppenderHolder {
 
   public long getAppenderIndex(long time) {
     ExcerptAppender appender = getAppender(time);
-    long index = ranges.startIndex(time);
+    long index = ranges.startIndexForTime(time);
     return appender.index() + index;
   }
 }
