@@ -1,7 +1,5 @@
 package org.deephacks.logbuffers;
 
-import com.google.common.base.Optional;
-import com.google.common.base.Stopwatch;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -9,6 +7,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.core.Is.is;
@@ -233,17 +232,17 @@ public class LogBufferFindStartTimeTest {
 
     @Override
     Optional<LogRaw> get(long index) throws IOException {
-      return Optional.fromNullable(logs.get((int) index));
+      return Optional.ofNullable(logs.get((int) index));
     }
 
     @Override
     public <T> Optional<LogRaw> getNext(Class<T> cls, long index) throws IOException {
-      return Optional.fromNullable(logs.get((int) index));
+      return Optional.ofNullable(logs.get((int) index));
     }
 
     @Override
     Optional<Long> peekTimestamp(long index) throws IOException {
-      return Optional.fromNullable(get(index).get().getTimestamp());
+      return Optional.ofNullable(get(index).get().getTimestamp());
     }
   }
 

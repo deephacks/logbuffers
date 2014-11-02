@@ -1,10 +1,6 @@
 package org.deephacks.logbuffers.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Charsets;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import org.deephacks.logbuffers.LogSerializer;
 import org.deephacks.logbuffers.LogUtil;
 import org.deephacks.logbuffers.Logs;
@@ -12,6 +8,7 @@ import org.deephacks.logbuffers.Tail;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -21,37 +18,43 @@ import java.util.UUID;
 
 public class JacksonSerializer implements LogSerializer {
 
-  private BiMap<Long, Class<?>> mapping = HashBiMap.create();
+  private HashMap<Long, Class<?>> mappingForward = new HashMap<>();
+  private HashMap<Class<?>, Long> mappingBackward = new HashMap<>();
 
   private ObjectMapper mapper = new ObjectMapper();
 
   public JacksonSerializer() {
-    mapping.put(123L, A.class);
-    mapping.put(124L, B.class);
-    mapping.put(125L, PageViews.class);
+    mappingForward.put(123L, A.class);
+    mappingBackward.put(A.class, 123L);
+    mappingForward.put(124L, B.class);
+    mappingBackward.put(B.class, 124L);
+    mappingForward.put(125L, PageViews.class);
+    mappingBackward.put(PageViews.class, 125L);
   }
 
   @Override
-  public BiMap<Long, Class<?>> getMapping() {
-    return mapping;
+  public HashMap<Long, Class<?>> getMappingForward() {
+    return mappingForward;
   }
 
   @Override
   public byte[] serialize(Object object) {
-    Long type = mapping.inverse().get(object.getClass());
-    Preconditions.checkNotNull(type, "No type mapped to class " + object.getClass());
+    Long type = mappingBackward.get(object.getClass());
+    if(type == null) {
+      throw new NullPointerException("No type mapped to class " + object.getClass());
+    }
     StringWriter writer = new StringWriter();
     try {
       mapper.writeValue(writer, object);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    return writer.toString().getBytes(Charsets.UTF_8);
+    return writer.toString().getBytes(StandardCharsets.UTF_8);
   }
 
   @Override
   public Object deserialize(byte[] log, long type) {
-    Class<?> cls = mapping.get(type);
+    Class<?> cls = mappingForward.get(type);
     try {
       return mapper.readValue(log, cls);
     } catch (IOException e) {

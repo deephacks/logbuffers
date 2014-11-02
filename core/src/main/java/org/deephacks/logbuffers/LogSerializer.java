@@ -13,7 +13,7 @@
  */
 package org.deephacks.logbuffers;
 
-import com.google.common.collect.BiMap;
+import java.util.HashMap;
 
 /**
  * Serialize objects to and from raw object log format.
@@ -32,7 +32,7 @@ public interface LogSerializer {
    *
    * @return unique number or absent if no mapping exist.
    */
-  public BiMap<Long, Class<?>> getMapping();
+  public HashMap<Long, Class<?>> getMappingForward();
 
   /**
    * Called when a new object is written to the object log buffer that

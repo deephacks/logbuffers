@@ -14,20 +14,19 @@
 package org.deephacks.logbuffers;
 
 
-import com.google.common.base.Optional;
-
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 class TailForwardResult {
 
-  private Optional<ScheduleAgain> scheduleAgain = Optional.absent();
+  private Optional<ScheduleAgain> scheduleAgain = Optional.empty();
 
   TailForwardResult() {
 
   }
 
   TailForwardResult(ScheduleAgain scheduleAgain) {
-    this.scheduleAgain = Optional.fromNullable(scheduleAgain);
+    this.scheduleAgain = Optional.ofNullable(scheduleAgain);
   }
 
   public static TailForwardResult scheduleAgain(long delay, TimeUnit unit) {

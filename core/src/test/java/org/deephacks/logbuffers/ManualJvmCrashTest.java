@@ -1,11 +1,10 @@
 package org.deephacks.logbuffers;
 
-import com.google.common.primitives.Longs;
-import org.deephacks.logbuffers.LogBuffer.Builder;
-
 import java.io.File;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+
+import static org.deephacks.logbuffers.RollingTest.toBytes;
 
 /**
  * This is a manual test that randomly force the JVM to crash and core dump and
@@ -51,7 +50,7 @@ public class ManualJvmCrashTest {
     public void run() {
       while (true) {
         try {
-          buffer.write(Longs.toByteArray(counter.getAndIncrement()));
+          buffer.write(toBytes(counter.getAndIncrement()));
           Thread.sleep(1);
         } catch (Exception e) {
 

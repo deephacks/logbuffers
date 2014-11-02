@@ -1,10 +1,8 @@
 package org.deephacks.logbuffers;
 
-import com.google.common.base.Charsets;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -49,7 +47,7 @@ public class LogUtil {
   }
 
   public static byte[] randomLog() {
-    return UUID.randomUUID().toString().getBytes(Charsets.UTF_8);
+    return UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
   }
 
   public static byte[] randomCachedItem() {

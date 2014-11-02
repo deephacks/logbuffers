@@ -13,14 +13,15 @@
  */
 package org.deephacks.logbuffers;
 
-import com.google.common.base.Charsets;
-import com.google.common.base.Optional;
-import com.google.common.io.Files;
 import org.deephacks.logbuffers.TailSchedule.TailScheduleChunk;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Date;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -103,7 +104,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       sb.append(format.format(new Date(lastRead.getTimestamp()))).append(' ');
       sb.append(lastRead.getTimestamp()).append(' ');
       sb.append(lastRead.getIndex()).append('\n');
-      Files.write(sb.toString().getBytes(Charsets.UTF_8), readTime);
+      Files.write(Paths.get(readTime.toURI()), sb.toString().getBytes(StandardCharsets.UTF_8));
     } catch (IOException e) {
       System.err.println("Could not write to " + readTime.getAbsolutePath());
     }

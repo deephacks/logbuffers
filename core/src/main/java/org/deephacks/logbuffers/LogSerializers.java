@@ -13,20 +13,19 @@
  */
 package org.deephacks.logbuffers;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.deephacks.logbuffers.Guavas.checkNotNull;
 
 class LogSerializers {
   private Map<Long, LogSerializer> typeToSerializer = new HashMap<>();
   private Map<Class<?>, LogSerializer> classToSerializer = new HashMap<>();
-  private BiMap<Long, Class<?>> mapping = HashBiMap.create();
+  private HashMap<Long, Class<?>> mappingForward = new HashMap<>();
+  private HashMap<Class<?>, Long> mappingBackward = new HashMap<>();
 
   void addSerializer(LogSerializer serializer) {
-    BiMap<Long, Class<?>> mapping = serializer.getMapping();
+    HashMap<Long, Class<?>> mapping = serializer.getMappingForward();
     for (Long type : mapping.keySet()) {
       if (typeToSerializer.containsKey(type)) {
         throw new IllegalArgumentException("Overlapping serializers for type " + type);
@@ -37,7 +36,8 @@ class LogSerializers {
         throw new IllegalArgumentException("Overlapping serializers for class " + cls);
       }
       classToSerializer.put(cls, serializer);
-      this.mapping.put(type, cls);
+      this.mappingForward.put(type, cls);
+      this.mappingBackward.put(cls, type);
     }
   }
 
@@ -50,6 +50,6 @@ class LogSerializers {
   }
 
   Long getType(Class<?> cls) {
-    return Preconditions.checkNotNull(mapping.inverse().get(cls), "No mapping found for " + cls);
+    return checkNotNull(mappingBackward.get(cls), "No mapping found for " + cls);
   }
 }

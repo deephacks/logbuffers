@@ -137,13 +137,13 @@ public class RollingTest {
       LogRaw log = logBuffer.write(toBytes(i++));
       written.add(log);
       // enough sleep to write thousands of logs
-      Thread.sleep(250);
+      Thread.sleep(1);
     }
     System.out.println("Wrote " + written.size());
     return written;
   }
 
-  private byte[] toBytes(final int n) {
+  public static byte[] toBytes(final int n) {
     byte[] b = new byte[4];
     b[0] = (byte) (n >>> 24);
     b[1] = (byte) (n >>> 16);
@@ -151,4 +151,18 @@ public class RollingTest {
     b[3] = (byte) (n >>> 0);
     return b;
   }
+
+  public static byte[] toBytes(final long n) {
+    byte[] b = new byte[8];
+    b[0] = (byte) (n >>> 56);
+    b[1] = (byte) (n >>> 48);
+    b[2] = (byte) (n >>> 40);
+    b[3] = (byte) (n >>> 32);
+    b[4] = (byte) (n >>> 24);
+    b[5] = (byte) (n >>> 16);
+    b[6] = (byte) (n >>> 8);
+    b[7] = (byte) (n >>> 0);
+    return b;
+  }
+
 }

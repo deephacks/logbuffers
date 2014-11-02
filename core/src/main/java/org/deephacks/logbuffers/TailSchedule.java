@@ -1,11 +1,11 @@
 package org.deephacks.logbuffers;
 
-import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.deephacks.logbuffers.Guavas.checkNotNull;
 
 /**
  * A description of how the tail should behave in terms of scheduling.
@@ -24,12 +24,12 @@ public class TailSchedule {
   private final Tail<?> tail;
 
   private TailSchedule(Builder<?> builder) {
-    this.delay = Optional.fromNullable(builder.delay).or(15);
-    this.unit = Optional.fromNullable(builder.unit).or(SECONDS);
-    this.tail = Preconditions.checkNotNull(builder.tail);
+    this.delay = Optional.ofNullable(builder.delay).orElse(15);
+    this.unit = Optional.ofNullable(builder.unit).orElse(SECONDS);
+    this.tail = checkNotNull(builder.tail);
     this.backLogScheduleDelay = builder.backLogScheduleDelay;
-    this.backLogScheduleUnit = Optional.fromNullable(builder.backLogScheduleUnit).or(TimeUnit.MILLISECONDS);
-    this.starTime = Optional.fromNullable(builder.starTime);
+    this.backLogScheduleUnit = Optional.ofNullable(builder.backLogScheduleUnit).orElse(TimeUnit.MILLISECONDS);
+    this.starTime = Optional.ofNullable(builder.starTime);
   }
 
   public Tail<?> getTail() {
@@ -132,7 +132,7 @@ public class TailSchedule {
 
     protected TailScheduleChunk(Builder<?> builder) {
       super(builder);
-      this.chunkMs = Optional.fromNullable(builder.chunkMs).or(TimeUnit.SECONDS.toMillis(15));
+      this.chunkMs = Optional.ofNullable(builder.chunkMs).orElse(TimeUnit.SECONDS.toMillis(15));
     }
 
     public long getChunkMs() {

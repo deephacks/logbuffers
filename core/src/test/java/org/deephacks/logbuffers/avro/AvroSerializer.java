@@ -1,14 +1,10 @@
 package org.deephacks.logbuffers.avro;
 
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import com.google.protobuf.Message;
 import org.apache.avro.Schema;
 import org.apache.avro.io.*;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
-import org.apache.avro.specific.SpecificRecord;
 import org.deephacks.logbuffers.LogSerializer;
 
 import java.io.ByteArrayOutputStream;
@@ -20,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class AvroSerializer implements LogSerializer {
 
-  private BiMap<Long, Class<?>> mapping = HashBiMap.create();
+  private HashMap<Long, Class<?>> mapping = new HashMap<>();
   private Map<Long, SpecificDatumReader<Object>> schemaCache = new HashMap<>();
 
   public AvroSerializer() {
@@ -39,7 +35,7 @@ public class AvroSerializer implements LogSerializer {
   }
 
   @Override
-  public BiMap<Long, Class<?>> getMapping() {
+  public HashMap<Long, Class<?>> getMappingForward() {
     return mapping;
   }
 

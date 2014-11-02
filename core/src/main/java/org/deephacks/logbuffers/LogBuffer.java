@@ -13,8 +13,6 @@
  */
 package org.deephacks.logbuffers;
 
-import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
 import net.openhft.chronicle.ChronicleConfig;
 import org.deephacks.logbuffers.TailSchedule.TailScheduleChunk;
 
@@ -25,7 +23,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.logging.Logger;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static org.deephacks.logbuffers.Guavas.checkArgument;
+import static org.deephacks.logbuffers.Guavas.checkNotNull;
 import static org.deephacks.logbuffers.TailerHolder.Tailer;
 
 /**
@@ -70,8 +69,8 @@ public class LogBuffer {
   private final DateRanges ranges;
 
   protected LogBuffer(Builder builder) throws IOException {
-    Preconditions.checkNotNull(builder.ranges, "choose a range");
-    this.basePath = builder.basePath.or(DEFAULT_BASE_PATH);
+    checkNotNull(builder.ranges, "choose a range");
+    this.basePath = builder.basePath.orElse(DEFAULT_BASE_PATH);
     this.logger = Logger.getLogger(LogBuffer.class.getName() + "." + checkNotNull(basePath + "/writer"));
     this.appenderHolder = new AppenderHolder(basePath + "/data", builder.ranges);
     this.serializers = builder.serializers;
@@ -168,12 +167,12 @@ public class LogBuffer {
     synchronized (tailerHolder) {
       Optional<Long> optional = peekType(index);
       if (!optional.isPresent()) {
-        return Optional.absent();
+        return Optional.empty();
       }
       long type = optional.get();
       if (type != LogRaw.DEFAULT_TYPE) {
         LogSerializer serializer = serializers.getSerializer(type);
-        Class<?> found = serializer.getMapping().get(type);
+        Class<?> found = serializer.getMappingForward().get(type);
         if (cls.isAssignableFrom(found)) {
           return get(index);
         } else {
@@ -252,7 +251,7 @@ public class LogBuffer {
    * @throws IOException
    */
   public List<LogRaw> select(long fromIndex, long toIndex) throws IOException {
-    Preconditions.checkArgument(fromIndex <= toIndex, "from must be less than to");
+    checkArgument(fromIndex <= toIndex, "from must be less than to");
     initalizeTailerHolder();
     synchronized (tailerHolder) {
       ListIterator<Tailer> tailers = tailerHolder.getTailersBetweenIndex(fromIndex, toIndex).listIterator();
@@ -308,7 +307,7 @@ public class LogBuffer {
    * @throws IOException
    */
   public List<LogRaw> selectForward(long fromTimeMs, long toTimeMs) throws IOException {
-    Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
+    checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
     initalizeTailerHolder();
     LinkedList<LogRaw> messages = new LinkedList<>();
     ListIterator<Tailer> tailers = tailerHolder.getTailersBetweenTime(fromTimeMs, toTimeMs).listIterator();
@@ -403,7 +402,7 @@ public class LogBuffer {
         if (serializer == null) {
           throw new IllegalStateException("No serializer found for type " + log.getType());
         }
-        Class<?> cls = serializer.getMapping().get(log.getType());
+        Class<?> cls = serializer.getMappingForward().get(log.getType());
         if (type.isAssignableFrom(cls)) {
           T object = (T) serializer.deserialize(log.getContent(), log.getType());
           result.put(object, log);
@@ -566,7 +565,7 @@ public class LogBuffer {
 
   public static class Builder {
     private ChronicleConfig config = ChronicleConfig.LARGE.clone();
-    private Optional<String> basePath = Optional.absent();
+    private Optional<String> basePath = Optional.empty();
     private LogSerializers serializers = new LogSerializers();
     private DateRanges ranges;
 
@@ -575,7 +574,7 @@ public class LogBuffer {
     }
 
     public Builder basePath(String basePath) {
-      this.basePath = Optional.fromNullable(basePath);
+      this.basePath = Optional.ofNullable(basePath);
       return this;
     }
 

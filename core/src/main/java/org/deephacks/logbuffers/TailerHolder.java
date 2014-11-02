@@ -1,7 +1,5 @@
 package org.deephacks.logbuffers;
 
-import com.google.common.base.Optional;
-import com.google.common.collect.Range;
 import net.openhft.chronicle.ExcerptTailer;
 import net.openhft.chronicle.IndexedChronicle;
 
@@ -14,9 +12,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 class TailerHolder {
-  /**
-   * startIndexForTime -> tailer
-   */
+  /** startIndexForTime -> tailer */
   private final TreeMap<Long, Tailer> tailers = new TreeMap<>();
   private final DateRanges ranges;
   private final Path basePath;
@@ -86,7 +82,7 @@ class TailerHolder {
         throw new RuntimeException(e);
       }
     }
-    return Optional.absent();
+    return Optional.empty();
   }
 
   /**
@@ -217,7 +213,7 @@ class TailerHolder {
     String intervalDir = ranges.startTimeFormatForIndex(startIndex);
     File chronicleDir = new File(basePath.toString(), intervalDir);
     if (!chronicleDir.exists()) {
-      return Optional.absent();
+      return Optional.empty();
     }
     String chroniclePath = chronicleDir.getAbsolutePath() + "/" + intervalDir;
     IndexedChronicle chronicle = new IndexedChronicle(chroniclePath);
@@ -277,10 +273,6 @@ class TailerHolder {
     public long getHolderIndex(long index) {
       return index - ranges.startIndexForIndex(index);
           }
-
-    public Range<Long> getIndexRange() {
-      return Range.closed(startIndex, getLastWrittenIndex());
-    }
 
     public Optional<LogRaw> binarySearchAfterTime(long time) {
       long lastWrittenIndex = getLastWrittenIndex();

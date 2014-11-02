@@ -13,7 +13,6 @@
  */
 package org.deephacks.logbuffers;
 
-import com.google.common.base.Optional;
 import org.deephacks.logbuffers.TailForwardResult.ScheduleAgain;
 
 import javax.lang.model.type.TypeVariable;
@@ -24,6 +23,7 @@ import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
