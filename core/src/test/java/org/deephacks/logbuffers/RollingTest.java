@@ -42,6 +42,26 @@ public class RollingTest {
   }
 
   @Test
+  public void testSelectRolloverIndexWithBigMargins() throws Exception {
+    LinkedList<LogRaw> written = write(logBuffer);
+    List<LogRaw> selected = logBuffer.select(0, Long.MAX_VALUE);
+    for (int j = 0; j < written.size(); j++) {
+      assertThat(written.get(j), is(selected.get(j)));
+    }
+    assertThat(selected.size(), is(written.size()));
+  }
+
+  @Test
+  public void testSelectRolloverIndexOutsideKnown() throws Exception {
+    LinkedList<LogRaw> written = write(logBuffer);
+    List<LogRaw> selected = logBuffer.select(0, 1);
+    assertThat(selected.size(), is(0));
+    long lastIndex = written.getLast().getIndex();
+    selected = logBuffer.select(lastIndex + 1, lastIndex + 2);
+    assertThat(selected.size(), is(0));
+  }
+
+  @Test
   public void testSelectRolloverForwardTime() throws Exception {
     LinkedList<LogRaw> written = write(logBuffer);
     long t1 = written.getFirst().getTimestamp();
@@ -51,6 +71,26 @@ public class RollingTest {
       assertThat(written.get(j), is(selected.get(j)));
     }
     assertThat(selected.size(), is(written.size()));
+  }
+
+  @Test
+  public void testSelectForwardWithBigMargins() throws Exception {
+    LinkedList<LogRaw> written = write(logBuffer);
+    List<LogRaw> selected = logBuffer.selectForward(0, Long.MAX_VALUE);
+    for (int j = 0; j < written.size(); j++) {
+      assertThat(written.get(j), is(selected.get(j)));
+    }
+    assertThat(selected.size(), is(written.size()));
+  }
+
+  @Test
+  public void testSelectForwardOutsideKnown() throws Exception {
+    LinkedList<LogRaw> written = write(logBuffer);
+    List<LogRaw> selected = logBuffer.selectForward(0, 1);
+    assertThat(selected.size(), is(0));
+    long lastTimestamp = written.getLast().getTimestamp();
+    selected = logBuffer.selectForward(lastTimestamp + 1000, lastTimestamp + 2000);
+    assertThat(selected.size(), is(0));
   }
 
   @Test
@@ -66,6 +106,28 @@ public class RollingTest {
     assertThat(selected.size(), is(written.size()));
   }
 
+  @Test
+  public void testSelectBackwardWithBigMargins() throws Exception {
+    LinkedList<LogRaw> written = write(logBuffer);
+    Collections.reverse(written);
+    List<LogRaw> selected = logBuffer.selectBackward(Long.MAX_VALUE, 0);
+    for (int j = 0; j < written.size(); j++) {
+      assertThat(written.get(j), is(selected.get(j)));
+    }
+    assertThat(selected.size(), is(written.size()));
+  }
+
+  @Test
+  public void testSelectBackwardOutsideKnown() throws Exception {
+    LinkedList<LogRaw> written = write(logBuffer);
+    List<LogRaw> selected = logBuffer.selectBackward(1, 0);
+    assertThat(selected.size(), is(0));
+    long lastTimestamp = written.getLast().getTimestamp();
+    selected = logBuffer.selectBackward(lastTimestamp + 2000, lastTimestamp + 1000);
+    assertThat(selected.size(), is(0));
+  }
+
+
   private LinkedList<LogRaw> write(LogBuffer logBuffer) throws Exception {
     LinkedList<LogRaw> written = new LinkedList<>();
     long first = System.currentTimeMillis();
@@ -75,7 +137,7 @@ public class RollingTest {
       LogRaw log = logBuffer.write(toBytes(i++));
       written.add(log);
       // enough sleep to write thousands of logs
-      Thread.sleep(1);
+      Thread.sleep(250);
     }
     System.out.println("Wrote " + written.size());
     return written;

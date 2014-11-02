@@ -81,6 +81,9 @@ public class DateRanges {
    * Get the first index that belong to a certain period
    */
   public long startIndexForTime(long time) {
+    if (time == Long.MAX_VALUE) {
+      return Long.MAX_VALUE;
+    }
     return (time / interval) * indexesPerInterval;
   }
 
@@ -107,6 +110,9 @@ public class DateRanges {
    * Get the next start index for a certain index.
    */
   public long nextStartIndexForIndex(long index) {
+    if (index == Long.MAX_VALUE) {
+      return Long.MAX_VALUE;
+    }
     return startIndexForIndex(index) + indexesPerInterval;
   }
 

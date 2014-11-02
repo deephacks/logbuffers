@@ -250,19 +250,21 @@ public class LogBuffer {
     Preconditions.checkArgument(fromIndex <= toIndex, "from must be less than to");
     synchronized (tailerHolder) {
       ListIterator<Tailer> tailers = tailerHolder.getTailersBetweenIndex(fromIndex, toIndex).listIterator();
-      long currentIndex = fromIndex;
       List<LogRaw> result = new ArrayList<>();
       if (!tailers.hasNext()) {
         return new ArrayList<>();
       }
       Tailer tailer = tailers.next();
+      // pick first known index
+      long currentIndex = fromIndex < tailer.startIndex ? tailer.startIndex : fromIndex;
       while (true) {
         long lastWrittenIndex = tailer.getLastWrittenIndex();
         while (currentIndex <= lastWrittenIndex) {
           Optional<LogRaw> optional = LogRaw.read(tailer, currentIndex++);
-          if (optional.isPresent()) {
-            result.add(optional.get());
+          if (!optional.isPresent()) {
+            break;
           }
+          result.add(optional.get());
         }
         if (tailers.hasNext()) {
           tailer = tailers.next();

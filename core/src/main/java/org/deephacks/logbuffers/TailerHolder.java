@@ -1,6 +1,7 @@
 package org.deephacks.logbuffers;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.Range;
 import net.openhft.chronicle.ExcerptTailer;
 import net.openhft.chronicle.IndexedChronicle;
 
@@ -122,15 +123,22 @@ class TailerHolder {
       if (tailer != null) {
         tailers.add(tailer);
       } else {
-        try {
-          Optional<Tailer> optional = initalizeTailer(currentIndex);
-          if (!optional.isPresent()) {
-            return tailers;
+        // we wont go back further than first know data entry since initialization
+        if (!this.tailers.isEmpty() && currentIndex < this.tailers.firstKey().longValue()) {
+          Map.Entry<Long, Tailer> e = this.tailers.firstEntry();
+          tailers.add(e.getValue());
+          currentIndex = e.getKey();
+        } else {
+          try {
+            Optional<Tailer> optional = initalizeTailer(currentIndex);
+            if (!optional.isPresent()) {
+              return tailers;
+            }
+            this.tailers.put(currentIndex, optional.get());
+            tailers.add(optional.get());
+          } catch (IOException e) {
+            throw new RuntimeException(e);
           }
-          this.tailers.put(currentIndex, optional.get());
-          tailers.add(optional.get());
-        } catch (IOException e) {
-          throw new RuntimeException(e);
         }
       }
       currentIndex = ranges.nextStartIndexForIndex(currentIndex);
@@ -142,23 +150,32 @@ class TailerHolder {
    * Return all known data between two, both inclusive, indexes. Unpredictable behaviour
    * will occur if there are holes in the data, i.e. missing intervals.
    */
-  public List<Tailer> getTailersBetweenIndex(long fromIndex, long toIndex) {
-    List<Tailer> tailers = new ArrayList<>();
+  public LinkedList<Tailer> getTailersBetweenIndex(long fromIndex, long toIndex) {
+    LinkedList<Tailer> tailers = new LinkedList<>();
     long currentIndex = fromIndex;
     while (currentIndex <= toIndex) {
       Tailer tailer = this.tailers.get(currentIndex);
       if (tailer != null) {
         tailers.add(tailer);
       } else {
-        try {
-          Optional<Tailer> optional = initalizeTailer(currentIndex);
-          if (!optional.isPresent()) {
-            return tailers;
+        // we wont go back further than first know data entry since initialization
+        if (!this.tailers.isEmpty() &&
+          currentIndex < this.tailers.firstEntry().getValue().startIndex &&
+          toIndex > this.tailers.firstEntry().getValue().startIndex) {
+          Map.Entry<Long, Tailer> e = this.tailers.firstEntry();
+          tailers.add(e.getValue());
+          currentIndex = e.getValue().startIndex;
+        } else {
+          try {
+            Optional<Tailer> optional = initalizeTailer(currentIndex);
+            if (!optional.isPresent()) {
+              return tailers;
+            }
+            this.tailers.put(currentIndex, optional.get());
+            tailers.add(optional.get());
+          } catch (IOException e) {
+            throw new RuntimeException(e);
           }
-          this.tailers.put(currentIndex, optional.get());
-          tailers.add(optional.get());
-        } catch (IOException e) {
-          throw new RuntimeException(e);
         }
       }
       currentIndex = ranges.nextStartIndexForIndex(currentIndex);
@@ -260,6 +277,10 @@ class TailerHolder {
     public long getHolderIndex(long index) {
       return index - ranges.startIndexForIndex(index);
           }
+
+    public Range<Long> getIndexRange() {
+      return Range.closed(startIndex, getLastWrittenIndex());
+    }
 
     public Optional<LogRaw> binarySearchAfterTime(long time) {
       long lastWrittenIndex = getLastWrittenIndex();
