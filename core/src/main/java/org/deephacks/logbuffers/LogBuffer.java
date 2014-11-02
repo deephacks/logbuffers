@@ -45,49 +45,48 @@ public class LogBuffer {
 
   private final Logger logger;
 
-  /**
-   * system tmp dir
-   */
+  /** system tmp dir */
   private static final String TMP_DIR = System.getProperty("java.io.tmpdir");
 
-  /**
-   * default path used by log files if not specified
-   */
+  /** default path used by log files if not specified */
   private static final String DEFAULT_BASE_PATH = TMP_DIR + "/logbuffer";
 
-  /**
-   * optional executor used only by scheduled tailing
-   */
+  /** optional executor used only by scheduled tailing */
   private ScheduledExecutorService cachedExecutor;
 
-  /**
-   * log writer
-   */
+  /** log writer */
   private final AppenderHolder appenderHolder;
 
-  /**
-   * log reader
-   */
-  private final TailerHolder tailerHolder;
+  /** log reader */
+  private TailerHolder tailerHolder;
 
-  /**
-   * path where log buffer files are stored
-   */
+  /** path where log buffer files are stored */
   private String basePath;
 
   private ConcurrentHashMap<Class<?>, LogBufferTail<?>> tails = new ConcurrentHashMap<>();
 
   private LogSerializers serializers;
-  private long lastTailerIndex;
-  private Object firstIndex;
+
+  private final DateRanges ranges;
 
   protected LogBuffer(Builder builder) throws IOException {
     Preconditions.checkNotNull(builder.ranges, "choose a range");
     this.basePath = builder.basePath.or(DEFAULT_BASE_PATH);
     this.logger = Logger.getLogger(LogBuffer.class.getName() + "." + checkNotNull(basePath + "/writer"));
     this.appenderHolder = new AppenderHolder(basePath + "/data", builder.ranges);
-    this.tailerHolder = new TailerHolder(basePath + "/data", builder.ranges);
     this.serializers = builder.serializers;
+    this.ranges = builder.ranges;
+  }
+
+  // keep tailers lazy to avoid grabbing file descriptors where unnecessary
+  private void initalizeTailerHolder() {
+    if (this.tailerHolder == null) {
+      synchronized (this) {
+        if (tailerHolder == null) {
+          this.tailerHolder = new TailerHolder(basePath + "/data", ranges);
+        }
+      }
+    }
   }
 
   public static Builder newBuilder() {
@@ -149,11 +148,13 @@ public class LogBuffer {
    * @throws IOException
    */
   public List<LogRaw> select(long fromIndex) throws IOException {
+    initalizeTailerHolder();
     long lastIndex = tailerHolder.getLatestStopIndex();
     return select(fromIndex, lastIndex);
   }
 
   Optional<LogRaw> get(long index) throws IOException {
+    initalizeTailerHolder();
     synchronized (tailerHolder) {
       return LogRaw.read(tailerHolder, index);
     }
@@ -163,6 +164,7 @@ public class LogBuffer {
    * Get the next forward index of specified type.
    */
   public <T> Optional<LogRaw> getNext(Class<T> cls, long index) throws IOException {
+    initalizeTailerHolder();
     synchronized (tailerHolder) {
       Optional<Long> optional = peekType(index);
       if (!optional.isPresent()) {
@@ -187,6 +189,7 @@ public class LogBuffer {
    * Only reads the timestamp in order to avoid serialization overhead.
    */
   Optional<Long> peekTimestamp(long index) throws IOException {
+    initalizeTailerHolder();
     synchronized (tailerHolder) {
       List<Tailer> tailers = tailerHolder.getTailersBetweenIndex(index, index);
       return LogRaw.peekTimestamp(tailers.get(0), index);
@@ -194,6 +197,7 @@ public class LogBuffer {
   }
 
   Optional<Long> peekType(long index) throws IOException {
+    initalizeTailerHolder();
     synchronized (tailerHolder) {
       return LogRaw.peekType(tailerHolder, index);
     }
@@ -218,6 +222,7 @@ public class LogBuffer {
    * @throws IOException
    */
   public Long findStartTimeIndex(long startTime) throws IOException {
+    initalizeTailerHolder();
     long writeIndex = getWriteIndex();
     synchronized (tailerHolder) {
       long index = tailerHolder.binarySearchAfterTime(startTime).get().getIndex();
@@ -248,6 +253,7 @@ public class LogBuffer {
    */
   public List<LogRaw> select(long fromIndex, long toIndex) throws IOException {
     Preconditions.checkArgument(fromIndex <= toIndex, "from must be less than to");
+    initalizeTailerHolder();
     synchronized (tailerHolder) {
       ListIterator<Tailer> tailers = tailerHolder.getTailersBetweenIndex(fromIndex, toIndex).listIterator();
       List<LogRaw> result = new ArrayList<>();
@@ -303,6 +309,7 @@ public class LogBuffer {
    */
   public List<LogRaw> selectForward(long fromTimeMs, long toTimeMs) throws IOException {
     Preconditions.checkArgument(fromTimeMs <= toTimeMs, "from must be less than to");
+    initalizeTailerHolder();
     LinkedList<LogRaw> messages = new LinkedList<>();
     ListIterator<Tailer> tailers = tailerHolder.getTailersBetweenTime(fromTimeMs, toTimeMs).listIterator();
     if (!tailers.hasNext()) {
@@ -350,6 +357,7 @@ public class LogBuffer {
    * @throws IOException
    */
   public <T> Logs<T> select(Class<T> type, long fromIndex) throws IOException {
+    initalizeTailerHolder();
     return select(type, fromIndex, tailerHolder.getLatestStopIndex());
   }
 
@@ -459,7 +467,9 @@ public class LogBuffer {
       if (cachedExecutor != null) {
         cachedExecutor.shutdown();
       }
-      tailerHolder.close();
+      if (tailerHolder != null) {
+        tailerHolder.close();
+      }
     }
   }
 
@@ -550,6 +560,7 @@ public class LogBuffer {
   }
 
   public long getFirstIndex() {
+    initalizeTailerHolder();
     return tailerHolder.getFirstIndex();
   }
 
