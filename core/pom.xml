@@ -17,6 +17,16 @@
       <groupId>net.openhft</groupId>
       <artifactId>chronicle</artifactId>
       <version>3.2.5</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.kohsuke.jetbrains</groupId>
+          <artifactId>annotations</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>net.openhft</groupId>
+          <artifactId>compiler</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
