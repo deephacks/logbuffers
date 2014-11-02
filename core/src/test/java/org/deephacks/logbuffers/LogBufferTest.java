@@ -139,12 +139,14 @@ public class LogBufferTest {
 
   @Test
   public void test_scheduled_forward() throws Exception {
+    // one log
+    LogRaw log1 = logBuffer.write(c1);
+
     int delay = 250;
     long sleep = 500;
     TailSchedule tailSchedule = TailSchedule.builder(tail).delay(delay, TimeUnit.MILLISECONDS).build();
     logBuffer.forwardWithFixedDelay(tailSchedule);
-    // one log
-    LogRaw log1 = logBuffer.write(c1);
+
     Thread.sleep(sleep);
     assertThat(tail.logs.size(), is(1));
     assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());

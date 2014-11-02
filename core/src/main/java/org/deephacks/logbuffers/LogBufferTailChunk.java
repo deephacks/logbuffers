@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -104,7 +105,7 @@ class LogBufferTailChunk<T> extends LogBufferTail<T> {
       sb.append(format.format(new Date(lastRead.getTimestamp()))).append(' ');
       sb.append(lastRead.getTimestamp()).append(' ');
       sb.append(lastRead.getIndex()).append('\n');
-      Files.write(Paths.get(readTime.toURI()), sb.toString().getBytes(StandardCharsets.UTF_8));
+      Files.write(Paths.get(readTime.toURI()), sb.toString().getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
     } catch (IOException e) {
       System.err.println("Could not write to " + readTime.getAbsolutePath());
     }

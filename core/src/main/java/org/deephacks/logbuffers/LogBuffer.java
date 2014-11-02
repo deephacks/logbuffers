@@ -16,11 +16,13 @@ package org.deephacks.logbuffers;
 import net.openhft.chronicle.ChronicleConfig;
 import org.deephacks.logbuffers.TailSchedule.TailScheduleChunk;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static org.deephacks.logbuffers.Guavas.checkArgument;
@@ -54,7 +56,7 @@ public class LogBuffer {
   private ScheduledExecutorService cachedExecutor;
 
   /** log writer */
-  private final AppenderHolder appenderHolder;
+  private AppenderHolder appenderHolder;
 
   /** log reader */
   private TailerHolder tailerHolder;
@@ -71,8 +73,8 @@ public class LogBuffer {
   protected LogBuffer(Builder builder) throws IOException {
     checkNotNull(builder.ranges, "choose a range");
     this.basePath = builder.basePath.orElse(DEFAULT_BASE_PATH);
+    new File(basePath + "/data").mkdirs();
     this.logger = Logger.getLogger(LogBuffer.class.getName() + "." + checkNotNull(basePath + "/writer"));
-    this.appenderHolder = new AppenderHolder(basePath + "/data", builder.ranges);
     this.serializers = builder.serializers;
     this.ranges = builder.ranges;
   }
@@ -87,6 +89,18 @@ public class LogBuffer {
       }
     }
   }
+
+  // keep tailers lazy to avoid grabbing file descriptors where unnecessary
+  private void initalizeAppenderHolder() {
+    if (this.appenderHolder == null) {
+      synchronized (this) {
+        if (appenderHolder == null) {
+          this.appenderHolder = new AppenderHolder(basePath + "/data", ranges);
+        }
+      }
+    }
+  }
+
 
   public static Builder newBuilder() {
     return new Builder();
@@ -128,6 +142,7 @@ public class LogBuffer {
   }
 
   private LogRaw internalWrite(byte[] content, long type) throws IOException {
+    initalizeAppenderHolder();
     // single writer is required in order append to file since there is
     // only one file written to at a given time. Also for generating unique
     // sequential indexes and sequential timestamps.
@@ -590,6 +605,28 @@ public class LogBuffer {
 
     public Builder logsPerFile(int logsPerFile) {
       config.indexFileExcerpts(logsPerFile);
+      return this;
+    }
+
+    public Builder interval(TimeUnit unit) {
+      switch(unit) {
+        case NANOSECONDS:
+        case MICROSECONDS:
+        case MILLISECONDS:
+          throw new IllegalArgumentException("not supported" + unit.name());
+        case SECONDS:
+          this.ranges = DateRanges.secondly();
+          break;
+        case MINUTES:
+          this.ranges = DateRanges.minutely();
+          break;
+        case HOURS:
+          this.ranges = DateRanges.hourly();
+          break;
+        case DAYS:
+          this.ranges = DateRanges.daily();
+          break;
+      }
       return this;
     }
 

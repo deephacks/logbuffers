@@ -242,13 +242,14 @@ public class JacksonLogBufferTest {
 
   @Test
   public void test_scheduled_forward() throws Exception {
+    // one A log
+    LogRaw first = logBuffer.write(a1);
+
     TailSchedule scheduleA = TailSchedule.builder(tailA).delay(500, TimeUnit.MILLISECONDS).build();
     logBuffer.forwardWithFixedDelay(scheduleA);
     TailSchedule scheduleB = TailSchedule.builder(tailB).delay(500, TimeUnit.MILLISECONDS).build();
     logBuffer.forwardWithFixedDelay(scheduleB);
 
-    // one A log
-    LogRaw first = logBuffer.write(a1);
     Thread.sleep(600);
     assertThat(tailA.logs.size(), is(1));
     assertThat(tailA.logs.get(0), is(a1));

@@ -26,6 +26,10 @@
           <groupId>net.openhft</groupId>
           <artifactId>compiler</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>com.sun.java</groupId>
+          <artifactId>tools</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
