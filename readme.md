@@ -7,7 +7,7 @@ The purpose of logbuffers is to provide simple, reliable, low latency persistenc
 Every buffer consist of an ordered, immutable sequence of logs that is continually appended to — much like a commit log.
 Every log is given an increasing (but not necessarily sequential) index number (position/offset) that uniquely identifies each log within the buffer.
 
-Buffers are stored in continuously rolling files and every buffer retain every log written to it - whether or not it have been consumed - until the physical file is manually removed. 
+Buffers are stored in continuously rolling files (daily, hourly or minutely) and every buffer retain every log written to it - whether or not it have been consumed - until the physical file is manually removed. 
 
 Normally a consumer will advance its index linearly as it reads logs, but can in fact consume logs in any order it likes. A consumer may want reset the index to an arbitrary position in order to reprocess logs in failure scenarios for example.
 
