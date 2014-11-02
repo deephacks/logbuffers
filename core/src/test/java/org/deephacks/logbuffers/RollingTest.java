@@ -74,8 +74,10 @@ public class RollingTest {
     while (stop > System.currentTimeMillis()) {
       LogRaw log = logBuffer.write(toBytes(i++));
       written.add(log);
-      Thread.sleep(250);
+      // enough sleep to write thousands of logs
+      Thread.sleep(1);
     }
+    System.out.println("Wrote " + written.size());
     return written;
   }
 
