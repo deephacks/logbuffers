@@ -31,7 +31,10 @@ A consumer may use the index to select any logs. A buffer does not track selecte
 
 ```java
 // create a buffer
-LogBuffer buffer = LogBuffer.newBuilder().hourly().basePath("/tmp/logbuffer").build();
+LogBuffer buffer = LogBuffer.newBuilder()
+  .hourly()
+  .basePath("/tmp/logbuffer")
+  .build();
 
 // write to buffer
 buffer.write("log message".getBytes());
@@ -81,7 +84,10 @@ reported separately.
 ```java
 
 // using protobufs
-LogBuffer buffer = LogBuffer.newBuilder().minutely().addSerializer(new ProtobufSerializer()).build();
+LogBuffer buffer = LogBuffer.newBuilder()
+  .minutely()
+  .addSerializer(new ProtobufSerializer())
+  .build();
 
 buffer.forwardWithFixedDelay(new PageViewTail(), 500, TimeUnit.MILLISECONDS);
 buffer.forwardWithFixedDelay(new VisitTail(), 1, TimeUnit.SECONDS);
