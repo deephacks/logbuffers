@@ -26,16 +26,16 @@ import static org.deephacks.logbuffers.Guavas.checkNotNull;
 import java.util.concurrent.TimeUnit;
 
 /**
- * An object that measures elapsed time in nanoseconds. It is useful to measure
- * elapsed time using this class instead of direct calls to {@link
+ * An object that measures elapsed fromTime in nanoseconds. It is useful to measure
+ * elapsed fromTime using this class instead of direct calls to {@link
  * System#nanoTime} for a few reasons:
  *
  * <ul>
- * <li>An alternate time source can be substituted, for testing or performance
+ * <li>An alternate fromTime source can be substituted, for testing or performance
  *     reasons.
  * <li>As documented by {@code nanoTime}, the value returned has no absolute
  *     meaning, and can only be interpreted as relative to another timestamp
- *     returned by {@code nanoTime} at a different time. {@code Stopwatch} is a
+ *     returned by {@code nanoTime} at a different fromTime. {@code Stopwatch} is a
  *     more effective abstraction because it exposes only these relative values,
  *     not the absolute ones.
  * </ul>
@@ -72,7 +72,7 @@ public final class Stopwatch {
 
   /**
    * Creates (but does not start) a new stopwatch using {@link System#nanoTime}
-   * as its time source.
+   * as its fromTime source.
    *
    * @since 15.0
    */
@@ -81,7 +81,7 @@ public final class Stopwatch {
   }
 
   /**
-   * Creates (but does not start) a new stopwatch, using the specified time
+   * Creates (but does not start) a new stopwatch, using the specified fromTime
    * source.
    *
    * @since 15.0
@@ -92,7 +92,7 @@ public final class Stopwatch {
 
   /**
    * Creates (and starts) a new stopwatch using {@link System#nanoTime}
-   * as its time source.
+   * as its fromTime source.
    *
    * @since 15.0
    */
@@ -101,7 +101,7 @@ public final class Stopwatch {
   }
 
   /**
-   * Creates (and starts) a new stopwatch, using the specified time
+   * Creates (and starts) a new stopwatch, using the specified fromTime
    * source.
    *
    * @since 15.0
@@ -112,7 +112,7 @@ public final class Stopwatch {
 
   /**
    * Creates (but does not start) a new stopwatch using {@link System#nanoTime}
-   * as its time source.
+   * as its fromTime source.
    */
   // TODO(user): @deprecated Use {@link Stopwatch#createUnstarted()} instead.
   public Stopwatch() {
@@ -120,7 +120,7 @@ public final class Stopwatch {
   }
 
   /**
-   * Creates (but does not start) a new stopwatch, using the specified time
+   * Creates (but does not start) a new stopwatch, using the specified fromTime
    * source.
    */
   // TODO(user): @deprecated Use {@link Stopwatch#createUnstarted(Ticker)} instead.
@@ -166,7 +166,7 @@ public final class Stopwatch {
   }
 
   /**
-   * Sets the elapsed time for this stopwatch to zero,
+   * Sets the elapsed fromTime for this stopwatch to zero,
    * and places it in a stopped state.
    *
    * @return this {@code Stopwatch} instance
@@ -182,8 +182,8 @@ public final class Stopwatch {
   }
 
   /**
-   * Returns the current elapsed time shown on this stopwatch, expressed
-   * in the desired time unit, with any fraction rounded down.
+   * Returns the current elapsed fromTime shown on this stopwatch, expressed
+   * in the desired fromTime unit, with any fraction rounded down.
    *
    * <p>Note that the overhead of measurement can be more than a microsecond, so
    * it is generally not useful to specify {@link TimeUnit#NANOSECONDS}
@@ -196,8 +196,8 @@ public final class Stopwatch {
   }
 
   /**
-   * Returns the current elapsed time shown on this stopwatch, expressed
-   * in the desired time unit, with any fraction rounded down.
+   * Returns the current elapsed fromTime shown on this stopwatch, expressed
+   * in the desired fromTime unit, with any fraction rounded down.
    *
    * <p>Note that the overhead of measurement can be more than a microsecond, so
    * it is generally not useful to specify {@link TimeUnit#NANOSECONDS}
@@ -212,7 +212,7 @@ public final class Stopwatch {
   }
 
   /**
-   * Returns the current elapsed time shown on this stopwatch, expressed
+   * Returns the current elapsed fromTime shown on this stopwatch, expressed
    * in milliseconds, with any fraction rounded down. This is identical to
    * {@code elapsed(TimeUnit.MILLISECONDS)}.
    *
@@ -225,7 +225,7 @@ public final class Stopwatch {
   }
 
   /**
-   * Returns a string representation of the current elapsed time.
+   * Returns a string representation of the current elapsed fromTime.
    */
   @Override public String toString() {
     long nanos = elapsedNanos();

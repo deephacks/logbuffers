@@ -6,6 +6,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,6 +22,7 @@ public class LogBufferTailConcurrencyTest {
   TailLog tail;
   int numLogs = 1_000_000;
   String path;
+
   @Before
   public void before() throws IOException {
     if (logBuffer != null) {
@@ -27,7 +31,6 @@ public class LogBufferTailConcurrencyTest {
     this.path = LogUtil.cleanupTmpDir();
     logBuffer = LogBuffer.newBuilder()
       .hourly()
-      .logsPerFile(numLogs)
       .basePath(path).build();
     tail = new TailLog();
   }
@@ -43,16 +46,13 @@ public class LogBufferTailConcurrencyTest {
     Stopwatch stopwatch = new Stopwatch().start();
     final CountDownLatch latch = new CountDownLatch(numLogs);
     for (int i = 0; i < numLogs; i++) {
-      executor.submit(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            logBuffer.write(LogUtil.randomCachedItem());
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          } finally {
-            latch.countDown();
-          }
+      executor.submit(() -> {
+        try {
+          logBuffer.write(LogUtil.randomLog());
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        } finally {
+          latch.countDown();
         }
       });
     }
@@ -64,9 +64,9 @@ public class LogBufferTailConcurrencyTest {
     System.out.println("Read " + numLogs + " in " + stopwatch.elapsed(TimeUnit.MILLISECONDS) + "ms");
     assertThat(tail.logs.size(), is(numLogs));
     // check uniqueness and ordering
-    LogRaw previous = null;
+    Log previous = null;
     for (int i = 0; i < numLogs; i++) {
-      LogRaw current = tail.logs.get(i);
+      Log current = tail.logs.get(i);
       if (previous != null) {
         assertTrue(previous.getIndex() < current.getIndex());
         assertTrue(previous.getTimestamp() <= current.getIndex());

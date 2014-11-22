@@ -17,11 +17,11 @@
 package org.deephacks.logbuffers;
 
 /**
- * A time source; returns a time value representing the number of nanoseconds elapsed since some
- * fixed but arbitrary point in time. Note that most users should use {@link Stopwatch} instead of
+ * A fromTime source; returns a fromTime value representing the number of nanoseconds elapsed since some
+ * fixed but arbitrary point in fromTime. Note that most users should use {@link Stopwatch} instead of
  * interacting with this class directly.
  *
- * <p><b>Warning:</b> this interface can only be used to measure elapsed time, not wall time.
+ * <p><b>Warning:</b> this interface can only be used to measure elapsed fromTime, not wall fromTime.
  *
  * @author Kevin Bourrillion
  * @since 10.0
@@ -41,7 +41,7 @@ public abstract class Ticker {
   public abstract long read();
 
   /**
-   * A ticker that reads the current time using {@link System#nanoTime}.
+   * A ticker that reads the current fromTime using {@link System#nanoTime}.
    *
    * @since 10.0
    */

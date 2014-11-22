@@ -6,11 +6,12 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
+import static junit.framework.Assert.fail;
 import static org.deephacks.logbuffers.LogBufferTest.TailLog;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 public class RollingTest {
   LogBuffer logBuffer;
@@ -32,137 +33,99 @@ public class RollingTest {
   }
 
   @Test
-  public void testSelectRolloverIndex() throws Exception {
-    LinkedList<LogRaw> written = write(logBuffer);
-    List<LogRaw> selected = logBuffer.select(written.getFirst().getIndex());
+  public void testFindIndexRollover() throws Exception {
+    LinkedList<Log> written = LogUtil.write(logBuffer);
+    Thread.sleep(1000);
+    LinkedList<Log> selected = logBuffer.find(Query.atLeastIndex(written.getFirst().getIndex())).toLinkedList();
     for (int j = 0; j < written.size(); j++) {
+      assertThat(selected.get(j), is(written.get(j)));
+    }
+    assertThat(selected.size(), is(written.size()));
+  }
+
+  @Test
+  public void testFindIndexRolloverWithBigMargins() throws Exception {
+    LinkedList<Log> written = LogUtil.write(logBuffer);
+    LinkedList<Log> selected = logBuffer.find(Query.atLeastIndex(0)).toLinkedList();
+    for (int j = 0; j < written.size(); j++) {
+      selected.get(j).getTimestamp();
       assertThat(written.get(j), is(selected.get(j)));
     }
     assertThat(selected.size(), is(written.size()));
   }
 
   @Test
-  public void testSelectRolloverIndexWithBigMargins() throws Exception {
-    LinkedList<LogRaw> written = write(logBuffer);
-    List<LogRaw> selected = logBuffer.select(0, Long.MAX_VALUE);
-    for (int j = 0; j < written.size(); j++) {
-      assertThat(written.get(j), is(selected.get(j)));
-    }
-    assertThat(selected.size(), is(written.size()));
-  }
-
-  @Test
-  public void testSelectRolloverIndexOutsideKnown() throws Exception {
-    LinkedList<LogRaw> written = write(logBuffer);
-    List<LogRaw> selected = logBuffer.select(0, 1);
+  public void testFindIndexRolloverOutsideKnown() throws Exception {
+    LinkedList<Log> written = LogUtil.write(logBuffer);
+    LinkedList<Log> selected = logBuffer.find(Query.closedIndex(0, 1)).toLinkedList();
     assertThat(selected.size(), is(0));
     long lastIndex = written.getLast().getIndex();
-    selected = logBuffer.select(lastIndex + 1, lastIndex + 2);
+    selected = logBuffer.find(Query.closedIndex(lastIndex + 1, lastIndex + 2)).toLinkedList();
     assertThat(selected.size(), is(0));
   }
 
   @Test
-  public void testSelectRolloverForwardTime() throws Exception {
-    LinkedList<LogRaw> written = write(logBuffer);
+  public void testFindIndexRolloverForcingSameMilli() throws Exception {
+    // write at full machine speed
+    LinkedList<Log> written = LogUtil.write(logBuffer, 0, 1500);
+    long startIndex = written.getFirst().getIndex();
+    long stopIndex = written.getLast().getIndex();
+    LinkedList<Log> selected = logBuffer.find(Query.closedIndex(startIndex, stopIndex)).toLinkedList();
+    // millions of logs are written so assert "leniently" to avoid waiting irritation
+    for (int j = 0; j < written.size(); j = j + 100000) {
+      assertThat(written.get(j).getIndex(), is(selected.get(j).getIndex()));
+    }
+    // consistency assert
+    assertThat(selected.size(), is(written.size()));
+    assertThat(selected.getFirst().getIndex(), is(written.getFirst().getIndex()));
+    assertThat(selected.getLast().getIndex(), is(written.getLast().getIndex()));
+  }
+
+  @Test
+  public void testFindTimeRollover() throws Exception {
+    LinkedList<Log> written = LogUtil.write(logBuffer);
     long t1 = written.getFirst().getTimestamp();
     long t2 = written.getLast().getTimestamp();
-    List<LogRaw> selected = logBuffer.selectForward(t1, t2);
+    LinkedList<Log> selected = logBuffer.find(Query.closedTime(t1, t2)).toLinkedList();
     for (int j = 0; j < written.size(); j++) {
-      assertThat(written.get(j), is(selected.get(j)));
+      assertThat(selected.get(j), is(written.get(j)));
     }
     assertThat(selected.size(), is(written.size()));
   }
 
   @Test
-  public void testSelectForwardWithBigMargins() throws Exception {
-    LinkedList<LogRaw> written = write(logBuffer);
-    List<LogRaw> selected = logBuffer.selectForward(0, Long.MAX_VALUE);
+  public void testFindTimeWithBigMargins() throws Exception {
+    LinkedList<Log> written = LogUtil.write(logBuffer);
+    LinkedList<Log> selected = logBuffer.find(Query.closedTime(0, System.currentTimeMillis())).toLinkedList();
     for (int j = 0; j < written.size(); j++) {
-      assertThat(written.get(j), is(selected.get(j)));
+      assertThat(selected.get(j), is(written.get(j)));
     }
     assertThat(selected.size(), is(written.size()));
   }
 
   @Test
-  public void testSelectForwardOutsideKnown() throws Exception {
-    LinkedList<LogRaw> written = write(logBuffer);
-    List<LogRaw> selected = logBuffer.selectForward(0, 1);
+  public void testFindTimeOutsideKnown() throws Exception {
+    LinkedList<Log> written = LogUtil.write(logBuffer);
+    LinkedList<Log> selected = logBuffer.find(Query.closedTime(0, 1)).toLinkedList();
     assertThat(selected.size(), is(0));
     long lastTimestamp = written.getLast().getTimestamp();
-    selected = logBuffer.selectForward(lastTimestamp + 1000, lastTimestamp + 2000);
-    assertThat(selected.size(), is(0));
+    long count = logBuffer.find(Query.closedTime(lastTimestamp + 1000, lastTimestamp + 2000)).stream().count();
+    assertThat(count, is(0L));
   }
 
   @Test
-  public void testSelectRolloverBackwardTime() throws Exception {
-    LinkedList<LogRaw> written = write(logBuffer);
-    long t1 = written.getFirst().getTimestamp();
-    long t2 = written.getLast().getTimestamp();
-    Collections.reverse(written);
-    List<LogRaw> selected = logBuffer.selectBackward(t2, t1);
-    for (int j = 0; j < written.size(); j++) {
-      assertThat(written.get(j), is(selected.get(j)));
+  public void testFindTimeForcingSameMilli() throws Exception {
+    LinkedList<Log> written = LogUtil.write(logBuffer, 0, 1500);
+    long now = System.currentTimeMillis();
+    long from = now - (now % 1000);
+    long to = from + 100;
+    LinkedList<Log> selected = logBuffer.find(Query.closedTime(from, to)).toLinkedList();
+    assertTrue(!selected.isEmpty());
+    for (Log log : written) {
+      if (log.getTimestamp() >= from && log.getTimestamp() <= to) {
+        assertThat(selected.pollFirst(), is(log));
+      }
     }
-    assertThat(selected.size(), is(written.size()));
+    assertTrue(selected.isEmpty());
   }
-
-  @Test
-  public void testSelectBackwardWithBigMargins() throws Exception {
-    LinkedList<LogRaw> written = write(logBuffer);
-    Collections.reverse(written);
-    List<LogRaw> selected = logBuffer.selectBackward(Long.MAX_VALUE, 0);
-    for (int j = 0; j < written.size(); j++) {
-      assertThat(written.get(j), is(selected.get(j)));
-    }
-    assertThat(selected.size(), is(written.size()));
-  }
-
-  @Test
-  public void testSelectBackwardOutsideKnown() throws Exception {
-    LinkedList<LogRaw> written = write(logBuffer);
-    List<LogRaw> selected = logBuffer.selectBackward(1, 0);
-    assertThat(selected.size(), is(0));
-    long lastTimestamp = written.getLast().getTimestamp();
-    selected = logBuffer.selectBackward(lastTimestamp + 2000, lastTimestamp + 1000);
-    assertThat(selected.size(), is(0));
-  }
-
-
-  private LinkedList<LogRaw> write(LogBuffer logBuffer) throws Exception {
-    LinkedList<LogRaw> written = new LinkedList<>();
-    long first = System.currentTimeMillis();
-    int i = 0;
-    long stop = first + TimeUnit.SECONDS.toMillis(3);
-    while (stop > System.currentTimeMillis()) {
-      LogRaw log = logBuffer.write(toBytes(i++));
-      written.add(log);
-      // enough sleep to write thousands of logs
-      Thread.sleep(1);
-    }
-    System.out.println("Wrote " + written.size());
-    return written;
-  }
-
-  public static byte[] toBytes(final int n) {
-    byte[] b = new byte[4];
-    b[0] = (byte) (n >>> 24);
-    b[1] = (byte) (n >>> 16);
-    b[2] = (byte) (n >>> 8);
-    b[3] = (byte) (n >>> 0);
-    return b;
-  }
-
-  public static byte[] toBytes(final long n) {
-    byte[] b = new byte[8];
-    b[0] = (byte) (n >>> 56);
-    b[1] = (byte) (n >>> 48);
-    b[2] = (byte) (n >>> 40);
-    b[3] = (byte) (n >>> 32);
-    b[4] = (byte) (n >>> 24);
-    b[5] = (byte) (n >>> 16);
-    b[6] = (byte) (n >>> 8);
-    b[7] = (byte) (n >>> 0);
-    return b;
-  }
-
 }

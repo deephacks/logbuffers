@@ -2,17 +2,21 @@ package org.deephacks.logbuffers;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 public class PersistentCounter {
-  private ByteBuffer buffer;
-
+  private Path basePath;
   public PersistentCounter(String basePath) throws FileNotFoundException {
     File file = new File(basePath);
     file.mkdirs();
-    SingleMappedFileCache numberCache = new SingleMappedFileCache(basePath + "/numbers", 8);
-    buffer = numberCache.acquireBuffer(0, false).order(ByteOrder.nativeOrder());
+    this.basePath = Paths.get(basePath);
   }
 
 
@@ -21,8 +25,16 @@ public class PersistentCounter {
   }
 
   public long getAndIncrement() {
-    long value = buffer.getLong(0);
-    buffer.putLong(0, value + 1);
-    return value;
+    try {
+      byte[] bytes = Files.readAllBytes(basePath);
+      long counter = -1;
+      if (bytes.length == 8) {
+        counter = LogUtil.getLong(bytes);
+      }
+      Files.write(basePath, LogUtil.toBytes(counter++), StandardOpenOption.CREATE);
+      return counter;
+    } catch (IOException e) {
+      throw new AbortRuntimeException(e.getMessage() + ": " + e.getMessage());
+    }
   }
 }

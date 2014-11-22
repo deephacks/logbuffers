@@ -1,6 +1,5 @@
 package org.deephacks.logbuffers;
 
-
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -21,7 +20,8 @@ public class TailSchedule {
 
   private Optional<Long> starTime;
 
-  private final Tail<?> tail;
+  private final Tail tail;
+  private boolean initalized = false;
 
   private TailSchedule(Builder<?> builder) {
     this.delay = Optional.ofNullable(builder.delay).orElse(15);
@@ -32,7 +32,15 @@ public class TailSchedule {
     this.starTime = Optional.ofNullable(builder.starTime);
   }
 
-  public Tail<?> getTail() {
+  public boolean isInitalized() {
+    return initalized;
+  }
+
+  public void markInitalized() {
+    this.initalized = true;
+  }
+
+  public Tail getTail() {
     return tail;
   }
 
@@ -65,9 +73,9 @@ public class TailSchedule {
 
     private Long starTime;
 
-    private Tail<?> tail;
+    private Tail tail;
 
-    protected Builder(Tail<?> tail) {
+    protected Builder(Tail tail) {
       this.tail = tail;
     }
 
@@ -83,7 +91,7 @@ public class TailSchedule {
     }
 
     /**
-     * Set the time from where the tail should start processing logs.
+     * Set the fromTime from where the tail should start processing logs.
      */
     public T startTime(long startTime) {
       this.starTime = startTime;
@@ -106,7 +114,7 @@ public class TailSchedule {
 
   private static class DefaultBuilder extends Builder<DefaultBuilder> {
 
-    private DefaultBuilder(Tail<?> tail) {
+    private DefaultBuilder(Tail tail) {
       super(tail);
     }
 
@@ -119,13 +127,13 @@ public class TailSchedule {
   /**
    * @return the tail of this schedule
    */
-  public static Builder<?> builder(Tail<?> tail) {
+  public static Builder<?> builder(Tail tail) {
     return new DefaultBuilder(tail);
   }
 
   /**
    * Same as the default except that logs are sliced iteratively into chunks according to a certain
-   * period of time until all unprocessed logs are finished.
+   * period of fromTime until all unprocessed logs are finished.
    */
   public static class TailScheduleChunk extends TailSchedule {
     private final long chunkMs;
@@ -142,7 +150,7 @@ public class TailSchedule {
     public static abstract class Builder<T extends Builder<T>> extends TailSchedule.Builder<T> {
       private long chunkMs;
 
-      protected Builder(Tail<?> tail) {
+      protected Builder(Tail tail) {
         super(tail);
       }
 
@@ -161,7 +169,7 @@ public class TailSchedule {
 
     private static class DefaultBuilder extends Builder<DefaultBuilder> {
 
-      protected DefaultBuilder(Tail<?> tail) {
+      protected DefaultBuilder(Tail tail) {
         super(tail);
       }
 
@@ -171,7 +179,7 @@ public class TailSchedule {
       }
     }
 
-    public static Builder<?> builder(Tail<?> tail) {
+    public static Builder<?> builder(Tail tail) {
       return new DefaultBuilder(tail);
     }
   }

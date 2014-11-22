@@ -21,15 +21,10 @@ public class IndexTest {
 
   @Test
   public void write_read_close_read() throws IOException {
-
-    Index index = new Index(dir);
-
-    index.writeIndex(5);
-    assertThat(index.getIndex(), is(5L));
-
-    index.close();
-
-    index = new Index(dir);
-    assertThat(index.getIndex(), is(5L));
+    Index index = Index.binaryIndex(dir);
+    index.writeLastSeen(0, 1);
+    long[] lastSeen = index.getLastSeen();
+    assertThat(lastSeen[0], is(0L));
+    assertThat(lastSeen[1], is(1L));
   }
 }

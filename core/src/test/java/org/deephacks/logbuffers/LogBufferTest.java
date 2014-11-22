@@ -1,17 +1,16 @@
 package org.deephacks.logbuffers;
 
 
-import org.deephacks.logbuffers.LogBuffer.Builder;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
@@ -32,7 +31,7 @@ public class LogBufferTest {
     }
     this.basePath = LogUtil.cleanupTmpDir();
     logBuffer = LogBuffer.newBuilder()
-      .hourly()
+      .secondly()
       .basePath(basePath).build();
 
     tail = new TailLog();
@@ -40,93 +39,98 @@ public class LogBufferTest {
 
   @After
   public void after() throws IOException {
-    logBuffer.cancel(TailLog.class);
     logBuffer.close();
   }
 
   @Test
-  public void test_write_read() throws IOException {
+  public void test_write_read() throws Exception {
     // one log
-    LogRaw log1 = logBuffer.write(c1);
+    Log log1 = logBuffer.write(c1);
     long startIndex = log1.getIndex();
-    List<LogRaw> select = logBuffer.select(startIndex);
-    assertArrayEquals(select.get(0).getContent(), log1.getContent());
+    Query query = Query.atLeastIndex(startIndex);
+    LinkedList<Log> select = logBuffer.find(query).toLinkedList();
+    assertEquals(select.getFirst().getIndex(), log1.getIndex());
+    assertArrayEquals(select.getFirst().getContent(), log1.getContent());
 
     // write another
-    tail.logs.clear();
-    LogRaw log2 = logBuffer.write(c2);
-    select = logBuffer.select(startIndex);
+    Log log2 = logBuffer.write(c2);
+    select = logBuffer.find(query).toLinkedList();
     assertThat(select.size(), is(2));
-    assertArrayEquals(select.get(0).getContent(), log1.getContent());
-    assertArrayEquals(select.get(1).getContent(), log2.getContent());
+    assertEquals(select.get(0).getIndex(), log1.getIndex());
+    assertEquals(select.get(1).getIndex(), log2.getIndex());
 
-    assertArrayEquals(logBuffer.get(log1.getIndex()).get().getContent(), log1.getContent());
-    assertArrayEquals(logBuffer.get(log2.getIndex()).get().getContent(), log2.getContent());
+    assertThat(logBuffer.getIndex(log1.getIndex()).get().getIndex(), is(log1.getIndex()));
+    assertThat(logBuffer.getIndex(log2.getIndex()).get().getIndex(), is(log2.getIndex()));
 
     // forward index past first log
-    select = logBuffer.select(startIndex + 1);
+    query = Query.atLeastIndex(log2.getIndex());
+    select = logBuffer.find(query).toLinkedList();
     assertThat(select.size(), is(1));
-    assertArrayEquals(select.get(0).getContent(), log2.getContent());
+    assertEquals(select.get(0).getIndex(), log2.getIndex());
   }
 
   @Test
   public void test_write_read_period() throws Exception {
     long t1 = timestamp();
-    LogRaw log1 = logBuffer.write(c1);
+    Log log1 = logBuffer.write(c1);
 
     long t2 = timestamp();
-    LogRaw log2 = logBuffer.write(c2);
+    Log log2 = logBuffer.write(c2);
 
     long t3 = timestamp();
-    LogRaw log3 = logBuffer.write(c3);
+    Log log3 = logBuffer.write(c3);
 
     long t4 = timestamp();
-    LogRaw log4 = logBuffer.write(c4);
+    Log log4 = logBuffer.write(c4);
 
     long t5 = timestamp();
 
-    List<LogRaw> select = logBuffer.selectBackward(t1, 0);
+    long count = logBuffer.find(Query.closedTime(0, t1)).stream().count();
+    assertThat(count, is(0L));
+
+    LinkedList<Log> select = logBuffer.find(Query.closedTime(t1, t2)).toLinkedList();
+    assertThat(select.size(), is(1));
+    assertThat(select.getFirst().getIndex(), is(log1.getIndex()));
+
+    select = logBuffer.find(Query.closedTime(t2, t3)).toLinkedList();
+    assertThat(select.size(), is(1));
+    assertThat(select.getFirst().getIndex(), is(log2.getIndex()));
+
+    select = logBuffer.find(Query.closedTime(t3, t4)).toLinkedList();
+    assertThat(select.size(), is(1));
+    assertThat(select.getFirst().getIndex(), is(log3.getIndex()));
+
+    select = logBuffer.find(Query.closedTime(t4, t5)).toLinkedList();
+    assertThat(select.size(), is(1));
+    assertThat(select.getFirst().getIndex(), is(log4.getIndex()));
+
+    select = logBuffer.find(Query.closedTime(t5, System.currentTimeMillis())).toLinkedList();
     assertThat(select.size(), is(0));
 
-    select = logBuffer.selectBackward(t2, t1);
-    assertThat(select.size(), is(1));
-    assertArrayEquals(select.get(0).getContent(), log1.getContent());
-
-    select = logBuffer.selectBackward(t3, t2);
-    assertThat(select.size(), is(1));
-    assertArrayEquals(select.get(0).getContent(), log2.getContent());
-
-    select = logBuffer.selectBackward(t4, t3);
-    assertThat(select.size(), is(1));
-    assertArrayEquals(select.get(0).getContent(), log3.getContent());
-
-    select = logBuffer.selectBackward(t5, t4);
-    assertThat(select.size(), is(1));
-    assertArrayEquals(select.get(0).getContent(), log4.getContent());
-
-    select = logBuffer.selectBackward(System.currentTimeMillis(), t5);
-    assertThat(select.size(), is(0));
-
-    select = logBuffer.selectBackward(t4, t2);
+    select = logBuffer.find(Query.closedTime(t2, t4)).toLinkedList();
     assertThat(select.size(), is(2));
-    assertArrayEquals(select.get(1).getContent(), log2.getContent());
-    assertArrayEquals(select.get(0).getContent(), log3.getContent());
+    assertThat(select.getFirst().getIndex(), is(log2.getIndex()));
+    assertThat(select.get(1).getIndex(), is(log3.getIndex()));
   }
 
   @Test
-  public void test_manual_forward() throws IOException {
+  public void test_manual_forward() throws Exception {
     TailSchedule schedule = TailSchedule.builder(tail).build();
     // one log
-    LogRaw log1 = logBuffer.write(c1);
+    Log log1 = logBuffer.write(c1);
     logBuffer.forward(schedule);
     assertThat(tail.logs.size(), is(1));
-    assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());
+    assertThat(tail.logs.get(0).getIndex(), is(log1.getIndex()));
+
+    Thread.sleep(1000);
 
     // write another
-    LogRaw log2 = logBuffer.write(c2);
+    Log log2 = logBuffer.write(c2);
     logBuffer.forward(schedule);
+
     assertThat(tail.logs.size(), is(2));
-    assertArrayEquals(tail.logs.get(1).getContent(), log2.getContent());
+    assertThat(tail.logs.get(1).getIndex(), is(log2.getIndex()));
+    assertArrayEquals(log2.getContent(), tail.logs.get(1).getContent());
 
     // write multiple
     log1 = logBuffer.write(c1);
@@ -137,14 +141,42 @@ public class LogBufferTest {
     assertArrayEquals(tail.logs.get(3).getContent(), log2.getContent());
   }
 
+
+  @Test
+  public void test_manual_forward_utf8() throws Exception {
+    TailSchedule schedule = TailSchedule.builder(tail).build();
+    // one log
+    Log log1 = logBuffer.write("1");
+    logBuffer.forward(schedule);
+    assertThat(tail.logs.size(), is(1));
+    assertThat(tail.logs.get(0).getUtf8(), is("1"));
+
+    // write another
+    Log log2 = logBuffer.write("2");
+    logBuffer.forward(schedule);
+    assertThat(tail.logs.size(), is(2));
+    assertThat(tail.logs.get(1).getUtf8(), is("2"));
+    assertArrayEquals(log2.getContent(), tail.logs.get(1).getContent());
+
+    // write multiple
+    log1 = logBuffer.write("3");
+    log2 = logBuffer.write("4");
+    logBuffer.forward(schedule);
+    assertThat(tail.logs.size(), is(4));
+    assertThat(tail.logs.get(2).getUtf8(), is("3"));
+    assertThat(tail.logs.get(3).getUtf8(), is("4"));
+  }
+
+
   @Test
   public void test_scheduled_forward() throws Exception {
     // one log
-    LogRaw log1 = logBuffer.write(c1);
+    Log log1 = logBuffer.write(c1);
 
     int delay = 250;
-    long sleep = 500;
-    TailSchedule tailSchedule = TailSchedule.builder(tail).delay(delay, TimeUnit.MILLISECONDS).build();
+    long sleep = 800;
+    TailSchedule tailSchedule = TailSchedule.builder(tail)
+      .delay(delay, TimeUnit.MILLISECONDS).build();
     logBuffer.forwardWithFixedDelay(tailSchedule);
 
     Thread.sleep(sleep);
@@ -152,7 +184,7 @@ public class LogBufferTest {
     assertArrayEquals(tail.logs.get(0).getContent(), log1.getContent());
 
     // write another
-    LogRaw log2 = logBuffer.write(c2);
+    Log log2 = logBuffer.write(c2);
     Thread.sleep(sleep);
 
     assertThat(tail.logs.size(), is(2));
@@ -166,8 +198,117 @@ public class LogBufferTest {
     assertThat(tail.logs.size(), is(4));
     assertArrayEquals(tail.logs.get(2).getContent(), log1.getContent());
     assertArrayEquals(tail.logs.get(3).getContent(), log2.getContent());
-
   }
+
+
+  @Test
+  public void test_find_time_before_data() throws Exception {
+    logBuffer.find(Query.atLeastTime(0)).stream().count();
+    Log log1 = logBuffer.write(c1);
+    LinkedList<Log> logs = logBuffer.find(Query.atLeastTime(0)).toLinkedList();
+    assertThat(logs.size(), is(1));
+    logs.getFirst().getTimestamp();
+    assertThat(log1, is(logs.getFirst()));
+  }
+
+  @Test
+  public void test_find_index_before_data() throws Exception {
+    logBuffer.find(Query.atLeastIndex(0)).stream().count();
+    Log log1 = logBuffer.write(c1);
+    LinkedList<Log> logs = logBuffer.find(Query.atLeastIndex(0)).toLinkedList();
+    assertThat(logs.size(), is(1));
+    logs.getFirst().getTimestamp();
+    assertThat(log1, is(logs.getFirst()));
+  }
+
+  @Test
+  public void test_parallel() throws Exception {
+    Log[] written = LogUtil.writeList(logBuffer, 0, 5000).toArray(new Log[0]);
+    Log[] logs = logBuffer.parallel().stream()
+      .sorted().collect(Collectors.toList()).toArray(new Log[0]);
+    assertArrayEquals(logs, written);
+  }
+
+  @Test
+  public void test_one_write_and_one_tail_buffer() throws Exception {
+    LogBuffer readBuffer = LogBuffer.newBuilder()
+      .secondly()
+      .basePath(basePath)
+      .build();
+    Log log = logBuffer.write(new byte[]{1});
+    Logs logs = readBuffer.find(Query.atLeastIndex(log.getIndex()));
+    assertThat(logs.stream().findFirst().get(), is(log));
+  }
+
+
+  @Test
+  public void test_sepecific_range_directory() throws Exception {
+    Log log1 = logBuffer.write(c1);
+    String time = RollingRanges.SECOND_FORMAT.format(new Date(log1.getTimestamp()));
+    LogBuffer buffer = LogBuffer.newBuilder().basePath("/tmp/logBufferTest/" + time).build();
+    LinkedList<Log> logs = buffer.find(Query.atLeastIndex(0)).toLinkedList();
+    assertThat(logs.size(), is(1));
+    logs.getFirst().getTimestamp();
+    assertThat(log1, is(logs.getFirst()));
+  }
+
+
+  @Test
+  public void test_two_tails() throws Exception {
+    ReadTail tail1 = new ReadTail();
+    TailSchedule schedule1 = TailSchedule.builder(tail1)
+      .delay(500, TimeUnit.MILLISECONDS)
+      .build();
+    logBuffer.forwardWithFixedDelay(schedule1);
+    ReadTail tail2 = new ReadTail();
+    TailSchedule schedule2 = TailSchedule.builder(tail2)
+      .delay(500, TimeUnit.MILLISECONDS)
+      .build();
+
+    logBuffer.forwardWithFixedDelay(schedule2);
+
+    List<Log> written = LogUtil.writeList(logBuffer, 10, 3000);
+    long now = System.currentTimeMillis();
+    while (System.currentTimeMillis() < now + 5000) {
+      if (tail1.reads.size() + tail2.reads.size() == written.size()) {
+        return;
+      }
+      Thread.sleep(100);
+    }
+    fail(tail1.reads.size() + tail2.reads.size() + " != " + written.size());
+  }
+
+
+  @Test
+  public void test_tail_resume() throws Exception {
+    Long lastRead = null;
+    for (int i = 1; i <= 3; i++) {
+      logBuffer = LogBuffer.newBuilder()
+        .secondly()
+        .basePath(basePath)
+        .build();
+      ReadTail tail1 = new ReadTail();
+      TailSchedule schedule1 = TailSchedule.builder(tail1)
+        .delay(500, TimeUnit.MILLISECONDS)
+        .build();
+      logBuffer.forwardWithFixedDelay(schedule1);
+      Log[] written = LogUtil.writeList(logBuffer, 10, 3000).toArray(new Log[0]);
+      long now = System.currentTimeMillis();
+      while (System.currentTimeMillis() < now + 5000) {
+        if (tail1.reads.size() == written.length) {
+          break;
+        }
+        Thread.sleep(100);
+      }
+      Log[] logs = tail1.reads.values().toArray(new Log[0]);
+      System.out.println("Round " + i);
+      assertArrayEquals(written, logs);
+
+      logBuffer.close();
+
+    }
+  }
+
 
   long timestamp() throws InterruptedException {
     Thread.sleep(10);
@@ -176,23 +317,41 @@ public class LogBufferTest {
     return time;
   }
 
-  public static class TailLog implements Tail<LogRaw> {
-
-    public List<LogRaw> logs = new ArrayList<>();
+  public static class TailLog implements Tail {
+    public List<Log> logs = new ArrayList<>();
 
     @Override
-    public void process(Logs<LogRaw> logs) {
-      this.logs.addAll(logs.get());
+    public void process(Logs logs) {
+      LinkedList<Log> processed = logs.toLinkedList();
+      this.logs.addAll(processed);
     }
   }
 
-  public static class StartTimeTail implements Tail<LogRaw> {
+  public static class StartTimeTail implements Tail {
 
-    public List<LogRaw> logs = new ArrayList<>();
+    public List<Log> logs = new ArrayList<>();
 
     @Override
-    public void process(Logs<LogRaw> logs) {
-      this.logs = logs.get();
+    public void process(Logs logs) {
+      this.logs.addAll(logs.toLinkedList());
+    }
+  }
+
+  public static class ReadTail implements Tail {
+    private ConcurrentSkipListMap<Long, Log> reads = new ConcurrentSkipListMap<>();
+
+    @Override
+    public void process(Logs logs) {
+      LinkedList<Log> list = logs.toLinkedList();
+      if (list.isEmpty()) {
+        return;
+      }
+      System.out.println("index: " + list.getFirst().getIndex() + " ... " + list.getLast().getIndex() + " size: " + list.size());
+      for (Log log : list) {
+        if (reads.putIfAbsent(log.getIndex(), log) != null) {
+          throw new RuntimeException("Duplicate read index!");
+        }
+      }
     }
   }
 }

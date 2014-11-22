@@ -1,0 +1,46 @@
+#!/bin/sh
+
+if [ -z "$LAUNCHER_HOME" ] ; then
+  ## resolve links
+  PRG="$0"
+
+  # for relative symlinks
+  while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+      PRG="$link"
+    else
+      PRG="`dirname "$PRG"`/$link"
+    fi
+  done
+
+  saveddir=`pwd`
+
+  LAUNCHER_HOME=`dirname "$PRG"`/..
+
+  # make it fully qualified
+  LAUNCHER_HOME=`cd "$LAUNCHER_HOME" && pwd`
+
+  cd "$saveddir"
+fi
+
+
+JAVA_OPTS=$JAVA_OPTS
+
+. $LAUNCHER_HOME/bin/launcher_vars
+
+CONF_DIR=${CONF_DIR-${LAUNCHER_HOME}/conf}
+LIB_DIR=${LIB_DIR-${LAUNCHER_HOME}/lib}
+APP_DIR=${APP_DIR-${LAUNCHER_HOME}/app}
+
+export LD_LIBRARY_PATH=/tmp
+
+exec java -classpath "${LIB_DIR}"/launcher-*.jar \
+  "-DLAUNCHER_HOME=${LAUNCHER_HOME}"  \
+  "-Dapplication.conf=${CONF_DIR}/application.conf"  \
+  $JAVA_OPTS \
+  "-Dmain.class=${MAIN_CLASS}"  \
+  "-DCONF_DIR=${CONF_DIR}" \
+  "-DLIB_DIR=${LIB_DIR}" \
+  "-DAPP_DIR=${APP_DIR}" launcher.Launcher "$@"

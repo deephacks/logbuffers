@@ -21,9 +21,8 @@ package org.deephacks.logbuffers;
  * Note that there can only be one instance per tail class! If more tails
  * are needed, several classes must be defined and managed separately.
  *
- * @param <T> log type of interest.
  */
-public interface Tail<T> {
+public interface Tail {
   /**
    * Process a set of logs. This is an all or nothing operation!
    *
@@ -33,5 +32,5 @@ public interface Tail<T> {
    * @param logs to be processed ordered sequentially according to index and timestamp.
    * @throws RuntimeException processing failure, logs are retried next round.
    */
-  public void process(Logs<T> logs) throws RuntimeException;
+  public void process(Logs logs) throws RuntimeException;
 }

@@ -1,7 +1,8 @@
 package org.deephacks.logbuffers;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.*;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 class Guavas {
   public static <T> T checkNotNull(T reference, String message) {
@@ -36,7 +37,13 @@ class Guavas {
     return list;
   }
 
+  public static <T> Stream<T> toStream(Iterable<T> it, boolean parallel) {
+    Spliterator<T> spliterator = Spliterators.spliterator(it.iterator(), 10, Spliterator.CONCURRENT);
+    return StreamSupport.stream(spliterator, parallel);
+  }
+
   public static boolean isNullOrEmpty(String string) {
     return string == null || string.length() == 0;
   }
+
 }

@@ -6,35 +6,73 @@ import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-public class DateRangesTest {
-  public static int MAX_INDEX_PER_MS = 1000;
+public class RollingRangesTest {
+  public static int MAX_INDEX_PER_MS = RollingRanges.MAX_INDEX_PER_MS;
+
+  @Test
+  public void testFindFormat() {
+    assertTrue(shouldFailFind("1970010101"));
+    assertTrue(shouldFailFind("1970-01-01-GMT"));
+    assertTrue(shouldFailFind("1970-01-01-01"));
+    assertTrue(shouldFailFind("1970-01-01-01-ZZZ"));
+    assertTrue(shouldFailFind("1970-01-01-01-01"));
+    assertTrue(shouldFailFind("1970-01-01-01-01-ZZZ"));
+    assertTrue(shouldFailFind("1970-01-01-01-01-01"));
+    assertTrue(shouldFailFind("1970-01-01-01-01-01-ZZZ"));
+    assertTrue(shouldFailFind("1970-01-01-01-01-01-01"));
+
+    RollingRanges range = RollingRanges.tryCreate("1970-01-01");
+    assertThat(range.formatTime(0), is("1970-01-01"));
+
+    range = RollingRanges.tryCreate("1970-01-01-01-GMT");
+    assertThat(range.formatTime(0), is("1970-01-01-00-GMT"));
+
+    range = RollingRanges.tryCreate("1970-01-01-01-01-GMT");
+    assertThat(range.formatTime(0), is("1970-01-01-00-00-GMT"));
+
+    range = RollingRanges.tryCreate("1970-01-01-01-01-01-GMT");
+    assertThat(range.formatTime(0), is("1970-01-01-00-00-00-GMT"));
+
+  }
+
+  private boolean shouldFailFind(String timeFormat) {
+    try {
+      RollingRanges.tryCreate(timeFormat);
+      return false;
+    } catch (IllegalArgumentException e) {
+      return true;
+    }
+  }
+
 
   @Test
   public void testDaily() {
-    DateRanges range = DateRanges.daily();
+    RollingRanges range = RollingRanges.daily();
     assertInterval(range, TimeUnit.DAYS, 0, "1970-01-01", "1970-01-02");
   }
 
   @Test
   public void testHourly() {
-    DateRanges range = DateRanges.hourly();
+    RollingRanges range = RollingRanges.hourly();
     assertInterval(range, TimeUnit.HOURS, 0, "1970-01-01-00-GMT", "1970-01-01-01-GMT");
   }
 
   @Test
   public void testMinutely() {
-    DateRanges range = DateRanges.minutely();
+    RollingRanges range = RollingRanges.minutely();
     assertInterval(range, TimeUnit.MINUTES, 0, "1970-01-01-00-00-GMT", "1970-01-01-00-01-GMT");
   }
 
   @Test
   public void testSecondly() {
-    DateRanges range = DateRanges.secondly();
+    RollingRanges range = RollingRanges.secondly();
     assertInterval(range, TimeUnit.SECONDS, 0, "1970-01-01-00-00-00-GMT", "1970-01-01-00-00-01-GMT");
   }
 
-  private void assertInterval(DateRanges range, TimeUnit unit, long time, String format1, String format2) {
+  private void assertInterval(RollingRanges range, TimeUnit unit, long time, String format1, String format2) {
     long indexPerInterval = MAX_INDEX_PER_MS * unit.toMillis(1) - 1;
     // current
     long time1 = 0;

@@ -14,49 +14,48 @@
 package org.deephacks.logbuffers;
 
 import org.deephacks.logbuffers.TailForwardResult.ScheduleAgain;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import javax.lang.model.type.TypeVariable;
+
 import java.io.IOException;
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
  * The actual process that watch the log buffer for new logs.
- *
+ * <p/>
  * If scheduled forwarding is used, a single-threaded executor of the underlying log buffer
  * will be reused for every tail instance.
- *
+ * <p/>
  * This process consumes all logs of any type.
  */
-class LogBufferTail<T> {
-  protected SimpleDateFormat format = new SimpleDateFormat("YYYY-MM-DD'T'HH:mm:ss:SSS");
+class LogBufferTail {
+  private final Logger logger;
   protected LogBuffer logBuffer;
-  protected Class<T> type;
-  protected Tail<T> tail;
-  private final Index readIndex;
+  protected Tail tail;
+  protected final Index readIndex;
   private ScheduledFuture<?> scheduledFuture;
   private String tailId;
 
   LogBufferTail(LogBuffer logBuffer, TailSchedule schedule) throws IOException {
     this.logBuffer = logBuffer;
-    this.tail = (Tail<T>) schedule.getTail();
-    this.type = (Class<T>) getParameterizedType(tail.getClass(), Tail.class).get(0);
-    this.readIndex = new Index(getTailId());
-    if (schedule.getStarTime().isPresent()) {
-      setStartReadTime(schedule.getStarTime().get());
+    logBuffer.initalizeDirs();
+    this.tail = schedule.getTail();
+    this.readIndex = Index.binaryIndex(getTailId());
+    long[] lastSeen = this.readIndex.getLastSeen();
+    if (lastSeen[1] == -1 || schedule.getStarTime().isPresent()) {
+      setStartReadTime(schedule.getStarTime().orElse(0L));
     }
+    this.logger = LoggerFactory.getLogger(LogBuffer.class.getName() + "." + tailId);
+
   }
 
   String getTailId() {
     if (tailId == null) {
+      logBuffer.mkdirsBasePath();
       tailId = logBuffer.getBasePath() + "/" + tail.getClass().getName();
     }
     return tailId;
@@ -68,29 +67,37 @@ class LogBufferTail<T> {
    * @throws IOException
    */
   TailForwardResult forward() throws IOException {
-    long currentReadIndex = getReadIndex();
-    Optional<LogRaw> currentLog = logBuffer.getNext(type, currentReadIndex);
-    if (!currentLog.isPresent()) {
-      return new TailForwardResult();
-    }
-    Logs<T> logs = logBuffer.select(type, currentReadIndex);
-    tail.process(logs);
-    // only write the read index if tail was successful
-    writeReadIndex(logs.getLastLog().getIndex() + 1);
-    return new TailForwardResult();
-  }
+    long[] seen = readIndex.getLastSeen();
+    long seenTime = seen[0];
+    long seenIndex = seen[1];
+    Dirs.LogIterator it;
 
-  void writeReadIndex(long index) throws IOException {
-    synchronized (readIndex) {
-      readIndex.writeIndex(index);
+    if (seenIndex == -1) {
+      long now = System.currentTimeMillis();
+      logger.debug("forwardTime {} {}", seenTime, now);
+      it = new Dirs.LogIterator(logBuffer.dirs, Query.closedTime(seenTime, now));
+    } else {
+      logger.debug("forwardIndex atLeast {}", seenIndex + 1);
+      it = new Dirs.LogIterator(logBuffer.dirs, Query.atLeastIndex(seenIndex + 1));
     }
+    try {
+      tail.process(new Logs(Guavas.toStream(it, false)));
+      Log lastProcessed = it.getLastProcessed();
+      // only write the read index if tail was successful
+      if (lastProcessed != null) {
+        readIndex.writeLastSeen(lastProcessed.getTimestamp(), lastProcessed.getIndex());
+      }
+    } catch (Throwable e) {
+      e.printStackTrace();
+    }
+    return new TailForwardResult();
   }
 
   /**
    * Forwards the log processing periodically by notifying the tail each round.
    *
    * @param delay the delay between the termination of one execution and the commencement of the next.
-   * @param unit time unit of the delay parameter.
+   * @param unit  fromTime unit of the delay parameter.
    */
   synchronized void forwardWithFixedDelay(int delay, TimeUnit unit) {
     if (scheduledFuture != null) {
@@ -107,8 +114,8 @@ class LogBufferTail<T> {
    * Cancel the periodic tail task.
    *
    * @param mayInterruptIfRunning if the thread executing this
-   * task should be interrupted; otherwise, in-progress tasks are allowed
-   * to complete
+   *                              task should be interrupted; otherwise, in-progress tasks are allowed
+   *                              to complete
    */
   synchronized void cancel(boolean mayInterruptIfRunning) {
     if (scheduledFuture != null) {
@@ -116,33 +123,15 @@ class LogBufferTail<T> {
     }
   }
 
-  /**
-   * @return the current read index.
-   */
-  long getReadIndex() throws IOException {
-    synchronized (readIndex) {
-      return readIndex.getIndex();
-    }
-  }
-
-  Long setStartReadTime(Long time) throws IOException {
-    Long index = logBuffer.findStartTimeIndex(time);
-    writeReadIndex(index);
-    return index;
-  }
-
-  /**
-   * @throws IOException
-   */
-  public void close() throws IOException {
-    synchronized (readIndex) {
-      readIndex.close();
-    }
+  Long setStartReadTime(long time) throws IOException {
+    readIndex.writeLastSeen(time, -1);
+    return time;
   }
 
   private static final class TailScheduler implements Runnable {
     private LogBufferTail tail;
     private ScheduledExecutorService executor;
+
     public TailScheduler(LogBufferTail tail, ScheduledExecutorService executor) {
       this.tail = tail;
       this.executor = executor;
@@ -156,46 +145,13 @@ class LogBufferTail<T> {
         if (scheduleAgain.isPresent()) {
           executor.schedule(this, scheduleAgain.get().getDelay(), scheduleAgain.get().getTimeUnit());
         }
+      } catch (AbortRuntimeException e) {
+        e.printStackTrace();
+        executor.shutdownNow();
       } catch (Throwable e) {
         // ignore for now
         e.printStackTrace();
       }
     }
-  }
-
-  private List<Class<?>> getParameterizedType(final Class<?> ownerClass, Class<?> genericSuperClass) {
-    Type[] types = null;
-    if (genericSuperClass.isInterface()) {
-      types = ownerClass.getGenericInterfaces();
-    } else {
-      types = new Type[]{ownerClass.getGenericSuperclass()};
-    }
-
-    List<Class<?>> classes = new ArrayList<>();
-    for (Type type : types) {
-      if (!ParameterizedType.class.isAssignableFrom(type.getClass())) {
-        return new ArrayList<>();
-      }
-
-      ParameterizedType ptype = (ParameterizedType) type;
-      Type[] targs = ptype.getActualTypeArguments();
-
-      for (Type aType : targs) {
-
-        classes.add(extractClass(ownerClass, aType));
-      }
-    }
-    return classes;
-  }
-
-  private Class<?> extractClass(Class<?> ownerClass, Type arg) {
-    if (arg instanceof ParameterizedType) {
-      return extractClass(ownerClass, ((ParameterizedType) arg).getRawType());
-    } else if (arg instanceof GenericArrayType) {
-      throw new UnsupportedOperationException("GenericArray types are not supported.");
-    } else if (arg instanceof TypeVariable) {
-      throw new UnsupportedOperationException("GenericArray types are not supported.");
-    }
-    return (arg instanceof Class ? (Class<?>) arg : Object.class);
   }
 }

@@ -13,84 +13,57 @@
  */
 package org.deephacks.logbuffers;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Spliterator;
+import java.util.stream.BaseStream;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A list of logs.
  */
-public final class Logs<T> {
+public final class Logs {
 
-  /** sequentially ordered logs according to index and timestamp */
-  private LinkedList<Log<T>> logs = new LinkedList<>();
+  private Stream<Log> logs;
 
-  /**
-   * the buffer is responsible for putting the logs in the correct order
-   */
-  void put(T object, LogRaw log) {
-    logs.add(new Log<>(log, object));
+  Logs(Stream<Log> logs) {
+    this.logs = logs;
   }
 
-  /**
-   * Get all logs ordered sequentially according to index and timestamp
-   *
-   * @return real object and log meta data.
-   */
-  public LinkedList<Log<T>> getLogs() {
+  public Stream<Log> stream() {
     return logs;
   }
 
-  /**
-   * Get all objects ordered sequentially according to index and timestamp
-   *
-   * @return the real objects that represent the logs
-   */
-  public LinkedList<T> get() {
-    LinkedList<T> objects = new LinkedList<>();
-    for (Log<T> log : logs) {
-      objects.add(log.get());
+  public LinkedList<Log> toLinkedList() {
+    return logs.collect(Collectors.toCollection(LinkedList::new));
+  }
+
+  public ArrayList<Log> toArrayList() {
+    return logs.collect(Collectors.toCollection(ArrayList::new));
+  }
+/*
+  void removeSeen(LogRaw lastSeen) {
+    if (logs == null) {
+      while(!isEmpty()) {
+        LogRaw log = linkedList.getFirst();
+        if (log.getIndex() <= lastSeen.getIndex()) {
+          linkedList.removeFirst();
+        } else {
+          return;
+        }
+      }
+    } else {
+      while (logs.hasNext()) {
+        // remove logs that have less index than seen already
+        LogRaw log = logs.next();
+        if (log.getIndex() > lastSeen.getIndex()) {
+          logs.setFirst(log);
+          return;
+        }
+      }
     }
-    return objects;
   }
-
-  /**
-   * @return the first object
-   */
-  public T getFirst() {
-    return logs.getFirst().get();
-  }
-
-  /**
-   * @return the first log
-   */
-  public LogRaw getFirstLog() {
-    return logs.getFirst().getLog();
-  }
-
-  /**
-   * @return the last object
-   */
-  public T getLast() {
-    return logs.getLast().get();
-  }
-
-  /**
-   * @return the last log
-   */
-  public LogRaw getLastLog() {
-    return logs.getLast().getLog();
-  }
-
-  /**
-   * @return number of logs
-   */
-  public int size() {
-    return logs.size();
-  }
-
-  /**
-   * @return if logs are empty
-   */
-  public boolean isEmpty() {
-    return logs.isEmpty();
-  }
+*/
 }

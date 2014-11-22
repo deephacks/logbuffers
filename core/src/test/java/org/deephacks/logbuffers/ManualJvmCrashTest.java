@@ -3,8 +3,7 @@ package org.deephacks.logbuffers;
 import java.io.File;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-
-import static org.deephacks.logbuffers.RollingTest.toBytes;
+import java.util.stream.Collectors;
 
 /**
  * This is a manual test that randomly force the JVM to crash and core dump and
@@ -15,7 +14,7 @@ public class ManualJvmCrashTest {
 
   public static void main(String[] args) throws Exception {
     new File(DIR).mkdirs();
-    LogBuffer buffer = LogBuffer.newBuilder().basePath(DIR).build();
+    LogBuffer buffer = LogBuffer.newBuilder().secondly().basePath(DIR).build();
     RawLogTail tail = new RawLogTail();
     new Writer(buffer).start();
     Thread.sleep(500);
@@ -25,15 +24,13 @@ public class ManualJvmCrashTest {
     Thread.sleep(30000);
   }
 
-  public static class RawLogTail implements Tail<LogRaw> {
+  public static class RawLogTail implements Tail {
 
     @Override
-    public void process(Logs<LogRaw> logs) {
+    public void process(Logs logs) {
       StringBuilder sb = new StringBuilder();
-      for (LogRaw l : logs.get()) {
-        sb.append(l.getIndex()).append(",");
-      }
-      System.out.println(sb.toString());
+      Object collect = logs.stream().map(l -> String.valueOf(l.getIndex())).collect(Collectors.joining(","));
+      System.out.println(collect);
     }
   }
 
@@ -50,7 +47,7 @@ public class ManualJvmCrashTest {
     public void run() {
       while (true) {
         try {
-          buffer.write(toBytes(counter.getAndIncrement()));
+          buffer.write(LogUtil.toBytes(counter.getAndIncrement()));
           Thread.sleep(1);
         } catch (Exception e) {
 

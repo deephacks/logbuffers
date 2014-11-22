@@ -1,0 +1,6 @@
+# set the following environment variables to override default
+
+MAIN_CLASS=org.deephacks.tools4j.cli.CliMain
+# CONF_DIR=/etc
+# LIB_DIR=/usr/local/your_app/lib
+# APP_DIR=/usr/local/your_app/app
