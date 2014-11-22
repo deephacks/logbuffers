@@ -25,9 +25,9 @@ Normally a consumer will advance its index linearly as it reads logs, but can in
 - Buffers can be configured for synchronous writes and survive power failures at the cost of performance.
 
 
-### Selecting logs
+### Streaming logs
 
-A consumer may use the index to select any logs. A buffer does not track selected logs so the consumer itself may need to keep track of log indexes to avoid loosing or duplicating logs. 
+A consumer may use the index to stream logs. A buffer does not track consumed logs so the consumer itself may need to keep track of log indexes to avoid loosing or processing logs twice.
 
 ```java
 // create a buffer
@@ -39,14 +39,36 @@ LogBuffer buffer = LogBuffer.newBuilder()
 // write to buffer
 buffer.write("log message".getBytes());
 
-// select all logs from index 0 up until the most recent log written.
-List<Log> logs = logBuffer.select(0);
+// stream logs from index 0 up until the most recent log written.
+java.util.stream.Stream<Log> stream = buffer.find(Query.atLeastIndex(0)).stream();
 
-// select all logs between index 10 - 20
-List<Log> logs = logBuffer.select(10, 20);
+// stream logs between index 10 - 20
+java.util.stream.Stream<Log> stream = buffer.find(Query.closedIndex(10, 20)).stream();
+
+// stream logs between time t1 and time t2
+java.util.stream.Stream<Log> stream = buffer.find(Query.closedTime(t1, t2)).stream();
 
 ```
+### Parallel processing of logs
 
+Since logs are stored in a directory structure according to a rolling interval (as seen below) each time interval can be processed in parallel. Parallel scanning scales linearly with number of CPU cores and speeds up processing tremendously.
+
+```sh
+$ ls -al /tmp/logbuffer
+drwxr-xr-x  2 java java  4096 Nov 22 10:00 2014-11-22-20
+drwxr-xr-x  2 java java  4096 Nov 22 10:00 2014-11-22-21
+drwxr-xr-x  2 java java  4096 Nov 22 10:00 2014-11-22-22
+```
+
+```java
+LogBuffer buffer = LogBuffer.newBuilder()
+  .hourly()
+  .basePath("/tmp/logbuffer")
+  .build();
+
+// process each log directory in parallel
+java.util.stream.Stream<Log> stream = buffer.parallel().stream();
+```
 
 ### Tailing logs
 
