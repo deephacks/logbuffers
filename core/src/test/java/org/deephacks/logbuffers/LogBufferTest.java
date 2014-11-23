@@ -12,6 +12,9 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
@@ -310,26 +313,74 @@ public class LogBufferTest {
   }
 
   @Test
-  public void testVals() throws Exception {
+  public void testNestedVals() throws Exception {
     LinkedList<Val1> vals = new LinkedList<>();
     for (int i = 0; i < 10; i++) {
       Map<TimeUnit, Integer> map = new HashMap<>();
       map.put(TimeUnit.DAYS, 1);
       map.put(TimeUnit.MINUTES, 2);
+
+      Val2 val2 = new Val2Builder()
+        .withString(Integer.toString(i))
+        .withTimeUnit(TimeUnit.DAYS)
+        .build();
+      Map<String, Val2> map2 = new HashMap<>();
+      map2.put(Integer.toString(i), val2);
+      map2.put(Integer.toString(i + 1), val2);
+
       Val1 val = new Val1Builder()
         .withStringList(Arrays.asList("1", "2", "3"))
         .withByteArray(new byte[]{1, 2, 3})
         .withString("string")
         .withPLong(1L)
         .withEnumIntegerMap(map)
+        .withStringVal2Map(map2)
         .build();
+
       vals.add(val);
       logBuffer.write(val);
     }
 
     logBuffer.find(Query.atLeastIndex(0))
       .stream(Val1Builder::parseFrom)
-      .forEach(val -> assertThat(val, is(vals.pollFirst())));
+      .forEach(val -> {
+        System.out.println(val);
+        assertThat(val, is(vals.pollFirst()));
+      });
+
+    Map<Val1, Long> collect = logBuffer.find(Query.atLeastIndex(0))
+      .stream(Val1Builder::parseFrom)
+      .collect(Collectors.groupingBy(o -> o, counting()));
+    System.out.println(collect);
+  }
+
+
+  @Test
+  public void testPageViews() throws Exception {
+
+    logBuffer.write(new PageViewBuilder().withUrl("www.google.com").withUserId(1L).build());
+    logBuffer.write(new PageViewBuilder().withUrl("www.facebook.com").withUserId(1L).build());
+    logBuffer.write(new PageViewBuilder().withUrl("www.yahoo.com").withUserId(2L).build());
+    logBuffer.write(new PageViewBuilder().withUrl("www.yahoo.com").withUserId(2L).build());
+    logBuffer.write(new PageViewBuilder().withUrl("www.google.com").withUserId(4L).build());
+    logBuffer.write(new PageViewBuilder().withUrl("www.google.com").withUserId(5L).build());
+    logBuffer.write(new PageViewBuilder().withUrl("www.google.com").withUserId(1L).build());
+
+    Map<String, Long> pageViewsPerUrl = logBuffer.find(Query.atLeastIndex(0))
+      .stream(PageViewBuilder::parseFrom)
+      .collect(Collectors.groupingBy(PageView::getUrl, counting()));
+
+    assertThat(pageViewsPerUrl.get("www.google.com"), is(4L));
+    assertThat(pageViewsPerUrl.get("www.facebook.com"), is(1L));
+    assertThat(pageViewsPerUrl.get("www.yahoo.com"), is(2L));
+
+    Map<String, Set<Long>> uniqueVisitorsPerUrl = logBuffer.find(Query.atLeastIndex(0))
+      .stream(PageViewBuilder::parseFrom)
+      .collect(Collectors.groupingBy(PageView::getUrl, mapping(PageView::getUserId, toSet())));
+
+    assertThat(uniqueVisitorsPerUrl.get("www.google.com").size(), is(3));
+    assertThat(uniqueVisitorsPerUrl.get("www.facebook.com").size(), is(1));
+    assertThat(uniqueVisitorsPerUrl.get("www.yahoo.com").size(), is(1));
   }
 
 

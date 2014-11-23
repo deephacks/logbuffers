@@ -15,5 +15,5 @@ public interface Val1 extends Encodable {
   @Id(2) List<String> getStringList();
   @Id(3) byte[] getByteArray();
   @Id(4) Map<TimeUnit, Integer> getEnumIntegerMap();
-
+  @Id(5) Map<String, Val2> getStringVal2Map();
 }
