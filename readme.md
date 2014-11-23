@@ -103,6 +103,8 @@ class LogTail implements Tail {
 
 More complicated log structures can be written and read using [vals](https://github.com/deephacks/vals) encoding in the same way as a raw logs. Note that each buffer track its specific type ONLY. This is by design so that different log types can be processed and reported separately.
 
+It is of course also possible to write logs encoded using Protobuf, Avro or JSON but this will be slower than using  [vals](https://github.com/deephacks/vals), which have been optimized for log buffers.
+
 ```java
 
 LogBuffer buffer = LogBuffer.newBuilder()
