@@ -27,7 +27,7 @@ Normally a consumer will advance its index linearly as it reads logs, but can in
 
 ### Streaming logs
 
-A consumer may use the index to stream logs. A buffer does not track consumed logs so the consumer itself may need to keep track of log indexes to avoid loosing or processing logs twice.
+A consumer may use the index to stream logs. A buffer does not track consumed logs so the consumer itself may need to keep track of log indexes to avoid loosing or processing logs twice. Streams works just like a regular lazy [java.util.stream.Stream](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html) pipeline; computation on logs is only performed when the terminal operation is initiated, and logs are consumed only as needed.
 
 ```java
 // create a buffer
@@ -107,22 +107,38 @@ It is of course also possible to write logs encoded using Protobuf, Avro or JSON
 
 ```java
 
+@Val
+public interface PageView extends Encodable {
+  @Id(0) String getUrl();
+  @Id(1) Long getUserId();
+}
+
 LogBuffer buffer = LogBuffer.newBuilder()
   .minutely()
   .build();
-
- Val1 val = new Val1Builder()
-        .withStringList(Arrays.asList("1", "2", "3"))
-        .withByteArray(new byte[]{1, 2, 3})
-        .withString("string")
-        .withPLong(1L)
-        .withEnumIntegerMap(map)
-        .build();
-
-  buffer.write(val);
   
-  logBuffer.find(Query.atLeastIndex(0))
-      .stream(Val1Builder::parseFrom)
-      .forEach(System.out::println);
+logBuffer.write(new PageViewBuilder().withUrl("www.google.com").withUserId(1L).build());
+logBuffer.write(new PageViewBuilder().withUrl("www.facebook.com").withUserId(1L).build());
+logBuffer.write(new PageViewBuilder().withUrl("www.yahoo.com").withUserId(2L).build());
+logBuffer.write(new PageViewBuilder().withUrl("www.yahoo.com").withUserId(2L).build());
+logBuffer.write(new PageViewBuilder().withUrl("www.google.com").withUserId(4L).build());
+logBuffer.write(new PageViewBuilder().withUrl("www.google.com").withUserId(5L).build());
+logBuffer.write(new PageViewBuilder().withUrl("www.google.com").withUserId(1L).build());
+
+Map<String, Long> pageViewsPerUrl = logBuffer.find(Query.atLeastIndex(0))
+    .stream(PageViewBuilder::parseFrom)
+    .collect(Collectors.groupingBy(PageView::getUrl, counting()));
+
+assertThat(pageViewsPerUrl.get("www.google.com"), is(4L));
+assertThat(pageViewsPerUrl.get("www.facebook.com"), is(1L));
+assertThat(pageViewsPerUrl.get("www.yahoo.com"), is(2L));
+
+Map<String, Set<Long>> uniqueVisitorsPerUrl = logBuffer.find(Query.atLeastIndex(0))
+  .stream(PageViewBuilder::parseFrom)
+  .collect(Collectors.groupingBy(PageView::getUrl, mapping(PageView::getUserId, toSet())));
+
+assertThat(uniqueVisitorsPerUrl.get("www.google.com").size(), is(3));
+assertThat(uniqueVisitorsPerUrl.get("www.facebook.com").size(), is(1));
+assertThat(uniqueVisitorsPerUrl.get("www.yahoo.com").size(), is(1));
 
 ```
