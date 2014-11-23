@@ -31,7 +31,7 @@
       <outputDirectory>/html</outputDirectory>
     </fileSet>
     <fileSet>
-      <directory>src/main/bin</directory>
+      <directory>src/main/sh</directory>
       <outputDirectory>/bin</outputDirectory>
     </fileSet>
     <fileSet>

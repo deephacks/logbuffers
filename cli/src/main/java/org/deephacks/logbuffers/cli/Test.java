@@ -46,30 +46,25 @@ public class Test {
   @CliCmd
   public void seqCheck(String path) throws Exception {
     LogBuffer logBuffer = createLogBuffer(path, interval);
-    TailSchedule tail = TailSchedule.builder(new Tail() {
-      @Override
-      public void process(Logs logs) throws RuntimeException {
-        logs.stream().forEach(log -> {
-          current = log;
-          long currentSeq = Long.parseLong(current.getUtf8());
-          if (previous == null) {
-            previous = current;
-          } else {
-            // 1 means the writer have restarted so don't check the sequence number
-            if (currentSeq != 1L && Long.parseLong(previous.getUtf8()) + 1 != currentSeq) {
-              exit(logBuffer);
-            }
-            if (previous.getIndex() >= current.getIndex()) {
-              exit(logBuffer);
-            }
-            previous = current;
-          }
-          if (currentSeq % 100000 == 0) {
-            System.out.println(Util.formatStringValue(log));
-          }
-        });
+    TailSchedule tail = TailSchedule.builder(logs -> logs.stream().forEach(log -> {
+      current = log;
+      long currentSeq = Long.parseLong(current.getUtf8());
+      if (previous == null) {
+        previous = current;
+      } else {
+        // 1 means the writer have restarted so don't check the sequence number
+        if (currentSeq != 1L && Long.parseLong(previous.getUtf8()) + 1 != currentSeq) {
+          exit(logBuffer);
+        }
+        if (previous.getIndex() >= current.getIndex()) {
+          exit(logBuffer);
+        }
+        previous = current;
       }
-    })
+      if (currentSeq % 100000 == 0) {
+        System.out.println(Util.formatStringValue(log));
+      }
+    }))
       .startTime(0)
       .delay(100, TimeUnit.MILLISECONDS)
       .build();
