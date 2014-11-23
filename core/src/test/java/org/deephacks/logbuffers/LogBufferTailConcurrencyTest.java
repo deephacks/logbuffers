@@ -20,7 +20,7 @@ import static org.junit.Assert.*;
 public class LogBufferTailConcurrencyTest {
   LogBuffer logBuffer;
   TailLog tail;
-  int numLogs = 1_000_000;
+  int numLogs = 500_000;
   String path;
 
   @Before

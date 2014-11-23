@@ -223,7 +223,7 @@ public class LogBufferTest {
 
   @Test
   public void test_parallel() throws Exception {
-    Log[] written = LogUtil.writeList(logBuffer, 0, 5000).toArray(new Log[0]);
+    Log[] written = LogUtil.writeList(logBuffer, 1, 5000).toArray(new Log[0]);
     Log[] logs = logBuffer.parallel().stream()
       .sorted().collect(Collectors.toList()).toArray(new Log[0]);
     assertArrayEquals(logs, written);
