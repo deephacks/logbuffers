@@ -55,9 +55,9 @@ Since logs are stored in a directory structure according to a rolling interval (
 
 ```sh
 $ ls -al /tmp/logbuffer
-drwxr-xr-x  2 java java  4096 Nov 22 10:00 2014-11-22-20
-drwxr-xr-x  2 java java  4096 Nov 22 10:00 2014-11-22-21
-drwxr-xr-x  2 java java  4096 Nov 22 10:00 2014-11-22-22
+drwxr-xr-x  2 java java  4096 Nov 22 20:00 2014-11-22-20
+drwxr-xr-x  2 java java  4096 Nov 22 21:00 2014-11-22-21
+drwxr-xr-x  2 java java  4096 Nov 22 22:00 2014-11-22-22
 ```
 
 ```java
