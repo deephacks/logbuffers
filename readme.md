@@ -60,6 +60,8 @@ drwxr-xr-x  2 java java  4096 Nov 22 21:00 2014-11-22-21
 drwxr-xr-x  2 java java  4096 Nov 22 22:00 2014-11-22-22
 ```
 
+A buffer with a base path directed to this directory can then process all of them in parallel.
+
 ```java
 LogBuffer buffer = LogBuffer.newBuilder()
   .hourly()
@@ -88,8 +90,8 @@ buffer.forwardWithFixedDelay(tail, 500, TimeUnit.MILLISECONDS);
 // cancel tail schedule
 buffer.cancel(tail);
 
-class LogTail implements Tail<Log> {
-  public void process(List<Log> logs) { 
+class LogTail implements Tail {
+  public void process(Logs logs) { 
     // group, aggregate, sum or whatever 
   }
 }
@@ -97,41 +99,28 @@ class LogTail implements Tail<Log> {
 ```
 
 
-### Object logs
+### Object logbuffer
 
-Logs can be written and read in any object format (json, protobuf, avro, etc) in the same way as the raw log buffer. Note that each
-tail instance track its specific type ONLY. This is by design so that different log types can be processed and
-reported separately.
+More complicated log structures can be written and read using [vals](https://github.com/deephacks/vals) encoding in the same way as a raw logs. Note that each buffer track its specific type ONLY. This is by design so that different log types can be processed and reported separately.
 
 ```java
 
-// using protobufs
 LogBuffer buffer = LogBuffer.newBuilder()
   .minutely()
-  .addSerializer(new ProtobufSerializer())
   .build();
 
-buffer.forwardWithFixedDelay(new PageViewTail(), 500, TimeUnit.MILLISECONDS);
-buffer.forwardWithFixedDelay(new VisitTail(), 1, TimeUnit.SECONDS);
+ Val1 val = new Val1Builder()
+        .withStringList(Arrays.asList("1", "2", "3"))
+        .withByteArray(new byte[]{1, 2, 3})
+        .withString("string")
+        .withPLong(1L)
+        .withEnumIntegerMap(map)
+        .build();
 
-// write different types of protobuf logs to buffer
-objectBuffer.write(PageView.newBuilder().setMsg("1").build());
-objectBuffer.write(Visit.newBuilder().setMsg("1").build());
-objectBuffer.write(PageView.newBuilder().setMsg("2").build());
-
-// select only PageView protobufs
-List<PageView> pageViews = objectBuffer.select(PageView.class, 0);
-
-class PageViewTail implements Tail<PageView> {
-  public void process(List<PageView> pageViews) { 
-    // group and report 
-  }
-}
-
-class VisitTail implements Tail<Visit> {
-  public void process(List<Visit> visits) { 
-    // group and report 
-  }
-}
+  buffer.write(val);
+  
+  logBuffer.find(Query.atLeastIndex(0))
+      .stream(Val1Builder::parseFrom)
+      .forEach(System.out::println);
 
 ```
