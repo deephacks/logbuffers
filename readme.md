@@ -127,7 +127,7 @@ logBuffer.write(new PageViewBuilder().withUrl("www.google.com").withUserId(1L).b
 
 Map<String, Long> pageViewsPerUrl = logBuffer.find(Query.atLeastIndex(0))
     .stream(PageViewBuilder::parseFrom)
-    .collect(Collectors.groupingBy(PageView::getUrl, counting()));
+    .collect(groupingBy(PageView::getUrl, counting()));
 
 assertThat(pageViewsPerUrl.get("www.google.com"), is(4L));
 assertThat(pageViewsPerUrl.get("www.facebook.com"), is(1L));
@@ -135,7 +135,7 @@ assertThat(pageViewsPerUrl.get("www.yahoo.com"), is(2L));
 
 Map<String, Set<Long>> uniqueVisitorsPerUrl = logBuffer.find(Query.atLeastIndex(0))
   .stream(PageViewBuilder::parseFrom)
-  .collect(Collectors.groupingBy(PageView::getUrl, mapping(PageView::getUserId, toSet())));
+  .collect(groupingBy(PageView::getUrl, mapping(PageView::getUserId, toSet())));
 
 assertThat(uniqueVisitorsPerUrl.get("www.google.com").size(), is(3));
 assertThat(uniqueVisitorsPerUrl.get("www.facebook.com").size(), is(1));
