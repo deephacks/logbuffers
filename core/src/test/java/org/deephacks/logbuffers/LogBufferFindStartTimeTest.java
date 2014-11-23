@@ -34,7 +34,7 @@ public class LogBufferFindStartTimeTest {
   }
 
   @Test
-  public void test_start_time_before_first_log() throws Exception {
+  public void testStartTimeBeforeFirstLog() throws Exception {
     LinkedList<Log> written = LogUtil.write(buffer, 0, 200);
     // fromTime 0 which is before any logs, should revert back to read index 0
     TailSchedule schedule = TailSchedule.builder(startTimeTail).startTime(0).build();
@@ -46,7 +46,7 @@ public class LogBufferFindStartTimeTest {
   }
 
   @Test
-  public void test_start_time_after_last_log() throws Exception {
+  public void testStartTimeAfterLastLog() throws Exception {
     LinkedList<Log> written = LogUtil.write(buffer, 0, 200);
     TailSchedule schedule = TailSchedule.builder(startTimeTail).startTime(written.getLast().getTimestamp() + 1).build();
     buffer.forward(schedule);
@@ -54,7 +54,7 @@ public class LogBufferFindStartTimeTest {
   }
 
   @Test
-  public void test_start_time_between_timestamp() throws Exception {
+  public void testStartTimeBetweenTimestamp() throws Exception {
     Log first = buffer.write(new byte[]{1});
     TailSchedule schedule = TailSchedule.builder(startTimeTail).build();
     buffer.forward(schedule);

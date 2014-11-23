@@ -43,7 +43,7 @@ public class LogBufferTest {
   }
 
   @Test
-  public void test_write_read() throws Exception {
+  public void testWriteRead() throws Exception {
     // one log
     Log log1 = logBuffer.write(c1);
     long startIndex = log1.getIndex();
@@ -70,7 +70,7 @@ public class LogBufferTest {
   }
 
   @Test
-  public void test_write_read_period() throws Exception {
+  public void testWriteReadPeriod() throws Exception {
     long t1 = timestamp();
     Log log1 = logBuffer.write(c1);
 
@@ -114,7 +114,7 @@ public class LogBufferTest {
   }
 
   @Test
-  public void test_manual_forward() throws Exception {
+  public void testManualForward() throws Exception {
     TailSchedule schedule = TailSchedule.builder(tail).build();
     // one log
     Log log1 = logBuffer.write(c1);
@@ -143,7 +143,7 @@ public class LogBufferTest {
 
 
   @Test
-  public void test_manual_forward_utf8() throws Exception {
+  public void testManualForwardUtf8() throws Exception {
     TailSchedule schedule = TailSchedule.builder(tail).build();
     // one log
     Log log1 = logBuffer.write("1");
@@ -169,7 +169,7 @@ public class LogBufferTest {
 
 
   @Test
-  public void test_scheduled_forward() throws Exception {
+  public void testScheduledForward() throws Exception {
     // one log
     Log log1 = logBuffer.write(c1);
 
@@ -202,7 +202,7 @@ public class LogBufferTest {
 
 
   @Test
-  public void test_find_time_before_data() throws Exception {
+  public void testFindTimeBeforeData() throws Exception {
     logBuffer.find(Query.atLeastTime(0)).stream().count();
     Log log1 = logBuffer.write(c1);
     LinkedList<Log> logs = logBuffer.find(Query.atLeastTime(0)).toLinkedList();
@@ -212,7 +212,7 @@ public class LogBufferTest {
   }
 
   @Test
-  public void test_find_index_before_data() throws Exception {
+  public void testFindIndexBeforeData() throws Exception {
     logBuffer.find(Query.atLeastIndex(0)).stream().count();
     Log log1 = logBuffer.write(c1);
     LinkedList<Log> logs = logBuffer.find(Query.atLeastIndex(0)).toLinkedList();
@@ -222,7 +222,7 @@ public class LogBufferTest {
   }
 
   @Test
-  public void test_parallel() throws Exception {
+  public void testParallel() throws Exception {
     Log[] written = LogUtil.writeList(logBuffer, 1, 5000).toArray(new Log[0]);
     Log[] logs = logBuffer.parallel().stream()
       .sorted().collect(Collectors.toList()).toArray(new Log[0]);
@@ -230,7 +230,7 @@ public class LogBufferTest {
   }
 
   @Test
-  public void test_one_write_and_one_tail_buffer() throws Exception {
+  public void testOneWriteAndOneTailBuffer() throws Exception {
     LogBuffer readBuffer = LogBuffer.newBuilder()
       .secondly()
       .basePath(basePath)
@@ -242,7 +242,7 @@ public class LogBufferTest {
 
 
   @Test
-  public void test_sepecific_range_directory() throws Exception {
+  public void testSepecificRangeDirectory() throws Exception {
     Log log1 = logBuffer.write(c1);
     String time = RollingRanges.SECOND_FORMAT.format(new Date(log1.getTimestamp()));
     LogBuffer buffer = LogBuffer.newBuilder().basePath("/tmp/logBufferTest/" + time).build();
@@ -254,7 +254,7 @@ public class LogBufferTest {
 
 
   @Test
-  public void test_two_tails() throws Exception {
+  public void testTwoTails() throws Exception {
     ReadTail tail1 = new ReadTail();
     TailSchedule schedule1 = TailSchedule.builder(tail1)
       .delay(500, TimeUnit.MILLISECONDS)
@@ -280,7 +280,7 @@ public class LogBufferTest {
 
 
   @Test
-  public void test_tail_resume() throws Exception {
+  public void testTailResume() throws Exception {
     Long lastRead = null;
     for (int i = 1; i <= 3; i++) {
       logBuffer = LogBuffer.newBuilder()
@@ -307,6 +307,29 @@ public class LogBufferTest {
       logBuffer.close();
 
     }
+  }
+
+  @Test
+  public void testVals() throws Exception {
+    LinkedList<Val1> vals = new LinkedList<>();
+    for (int i = 0; i < 10; i++) {
+      Map<TimeUnit, Integer> map = new HashMap<>();
+      map.put(TimeUnit.DAYS, 1);
+      map.put(TimeUnit.MINUTES, 2);
+      Val1 val = new Val1Builder()
+        .withStringList(Arrays.asList("1", "2", "3"))
+        .withByteArray(new byte[]{1, 2, 3})
+        .withString("string")
+        .withPLong(1L)
+        .withEnumIntegerMap(map)
+        .build();
+      vals.add(val);
+      logBuffer.write(val);
+    }
+
+    logBuffer.find(Query.atLeastIndex(0))
+      .stream(Val1Builder::parseFrom)
+      .forEach(val -> assertThat(val, is(vals.pollFirst())));
   }
 
 

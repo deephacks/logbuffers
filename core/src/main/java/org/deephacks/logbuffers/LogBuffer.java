@@ -14,6 +14,7 @@
 package org.deephacks.logbuffers;
 
 import net.openhft.chronicle.ChronicleConfig;
+import org.deephacks.vals.Encodable;
 
 import java.io.File;
 import java.io.IOException;
@@ -126,6 +127,18 @@ public class LogBuffer {
     return internalWrite(new Log(System.currentTimeMillis(), content));
   }
 
+  public Log write(Encodable encodable) throws IOException {
+    Log log = new Log(System.currentTimeMillis(), (byte[]) null);
+    initalizeAppenderHolder(log.getTimestamp());
+    // single writer is required in order append to file since there is
+    // only one file written to at a given fromTime. Also for generating unique
+    // sequential indexes and sequential timestamps.
+    synchronized (appenderHolder) {
+      return log.write(encodable, appenderHolder);
+    }
+  }
+
+
   /**
    * Write a new raw log object.
    *
@@ -179,10 +192,6 @@ public class LogBuffer {
    *
    * @return found logs.
    */
-  public static void main(String[] args) throws IOException {
-
-    LogBuffer.newBuilder().build().parallel().stream().count();
-  }
   public Logs parallel() {
     Collection<Dir> dirs = initalizeDirs();
     Stream<Log> result = null;

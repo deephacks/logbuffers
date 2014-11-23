@@ -2,9 +2,12 @@ package org.deephacks.logbuffers;
 
 import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.ExcerptTailer;
+import org.deephacks.vals.DirectBuffer;
+import org.deephacks.vals.Encodable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.function.Function;
 
 public class Log implements Comparable<Log> {
   private static byte VERSION = 1;
@@ -69,7 +72,7 @@ public class Log implements Comparable<Log> {
     return index;
   }
 
-  public boolean isPaddedEntry() {
+  boolean isPaddedEntry() {
     return paddedEntry;
   }
 
@@ -84,11 +87,19 @@ public class Log implements Comparable<Log> {
     return content;
   }
 
+  public <T extends Encodable> T getVal(Function<DirectBuffer, T> parseFrom) {
+    tailer.index(localIndex);
+    int contentSize = tailer.readInt(16);
+    tailer.position(20);
+    DirectBuffer buffer = new DirectBuffer(tailer.address() + tailer.position(), contentSize);
+    return parseFrom.apply(buffer);
+  }
+
   public String getUtf8() {
     return new String(getContent(), StandardCharsets.UTF_8);
   }
 
-  public boolean isIn(Query query) {
+  boolean isIn(Query query) {
     if (query.isIndexQuery()) {
       return query.getRange().contains(index);
     } else {
@@ -96,14 +107,13 @@ public class Log implements Comparable<Log> {
     }
   }
 
-  public boolean greaterThan(Query query) {
+  boolean greaterThan(Query query) {
     if (query.isIndexQuery()) {
       return index > query.getRange().start();
     } else {
       return getTimestamp() > query.getRange().start();
     }
   }
-
 
   private int getLength() {
     return 8 + 8 + 4 + content.length;
@@ -118,6 +128,23 @@ public class Log implements Comparable<Log> {
     appender.write(RESERVED_META);
     appender.writeInt(content.length);
     appender.write(content);
+    appender.finish();
+    this.index = index;
+    return this;
+  }
+
+  Log write(Encodable e, AppenderHolder holder) {
+    long time = getTimestamp();
+    long index = holder.getAppenderIndex(time);
+    ExcerptAppender appender = holder.getAppender(time);
+    int contentLength = e.getTotalSize();
+    int logLength = 8 + 8 + 4 + contentLength;
+    appender.startExcerpt(logLength);
+    appender.writeLong(time);
+    appender.write(RESERVED_META);
+    appender.writeInt(contentLength);
+    e.writeTo(new DirectBuffer(appender.address() + 8 + 8 + 4, contentLength), 0);
+    appender.position(logLength);
     appender.finish();
     this.index = index;
     return this;

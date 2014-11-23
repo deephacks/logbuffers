@@ -13,16 +13,17 @@
  */
 package org.deephacks.logbuffers;
 
+import org.deephacks.vals.DirectBuffer;
+import org.deephacks.vals.Encodable;
+
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Spliterator;
-import java.util.stream.BaseStream;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * A list of logs.
+ * A stream of logs.
  */
 public final class Logs {
 
@@ -36,6 +37,10 @@ public final class Logs {
     return logs;
   }
 
+  public <T extends Encodable> Stream<T> stream(Function<DirectBuffer, T> parseFrom) {
+    return logs.map(l -> l.getVal(parseFrom));
+  }
+
   public LinkedList<Log> toLinkedList() {
     return logs.collect(Collectors.toCollection(LinkedList::new));
   }
@@ -43,27 +48,4 @@ public final class Logs {
   public ArrayList<Log> toArrayList() {
     return logs.collect(Collectors.toCollection(ArrayList::new));
   }
-/*
-  void removeSeen(LogRaw lastSeen) {
-    if (logs == null) {
-      while(!isEmpty()) {
-        LogRaw log = linkedList.getFirst();
-        if (log.getIndex() <= lastSeen.getIndex()) {
-          linkedList.removeFirst();
-        } else {
-          return;
-        }
-      }
-    } else {
-      while (logs.hasNext()) {
-        // remove logs that have less index than seen already
-        LogRaw log = logs.next();
-        if (log.getIndex() > lastSeen.getIndex()) {
-          logs.setFirst(log);
-          return;
-        }
-      }
-    }
-  }
-*/
 }
