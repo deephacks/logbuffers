@@ -27,7 +27,8 @@ Normally a consumer will advance its index linearly as it reads logs, but can in
 
 ### Streaming logs
 
-A consumer may use the index to stream logs. A buffer does not track consumed logs so the consumer itself may need to keep track of log indexes to avoid loosing or processing logs twice. Streams works just like a regular lazy [java.util.stream.Stream](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html) pipeline; computation on logs is only performed when the terminal operation is initiated, and logs are consumed only as needed.
+A consumer may use the index to stream logs. A buffer does not track consumed logs so the consumer itself may need to keep track of log indexes to avoid loosing or processing logs twice. Streams works just like a regular lazy [java.util.stream.Stream](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html) pipeline; computation on logs is only performed when the terminal operation is initiated, and logs are consumed only as needed. Memory will
+not be exhausted unless the stream query itself cache too much data during execution.
 
 ```java
 // create a buffer
